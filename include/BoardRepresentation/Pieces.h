@@ -1,8 +1,7 @@
 #pragma once
 
-#include <cstdint>
+#include "Bitboard.h"
 
-#define Bitboard uint64_t
 
 #define PIECES_LIST 		\
 	X(WHITE_PAWN)			\
@@ -68,9 +67,9 @@ constexpr inline bool IsBlack(Piece p) { return Piece::BLACK_PAWN <= p && p <= P
 template<Piece P>
 constexpr Bitboard GetStartingPositionBitboard();
 template<>
-constexpr Bitboard GetStartingPositionBitboard<Piece::WHITE_PAWN>() { return 0x000000000000FF00ULL; }
+constexpr Bitboard GetStartingPositionBitboard<Piece::WHITE_PAWN>() { return Bitboard(0x000000000000FF00ULL); }
 template<>
-constexpr Bitboard GetStartingPositionBitboard<Piece::WHITE_KNIGHT>() { return 0x0000000000000042ULL; }
+constexpr Bitboard GetStartingPositionBitboard<Piece::WHITE_KNIGHT>() { return Bitboard(0x000000008000042ULL); }
 template<>
 constexpr Bitboard GetStartingPositionBitboard<Piece::WHITE_BISHOP>() { return 0x0000000000000024ULL; }
 template<>
@@ -82,7 +81,7 @@ constexpr Bitboard GetStartingPositionBitboard<Piece::WHITE_KING>() { return 0x0
 template<>
 constexpr Bitboard GetStartingPositionBitboard<Piece::BLACK_PAWN>() { return 0x00FF000000000000ULL; }
 template<>
-constexpr Bitboard GetStartingPositionBitboard<Piece::BLACK_KNIGHT>() { return 0x4200000000000000ULL; }
+constexpr Bitboard GetStartingPositionBitboard<Piece::BLACK_KNIGHT>() { return 0x4200000008110000ULL; }
 template<>
 constexpr Bitboard GetStartingPositionBitboard<Piece::BLACK_BISHOP>() { return 0x2400000000000000ULL; }
 template<>
@@ -91,3 +90,33 @@ template<>
 constexpr Bitboard GetStartingPositionBitboard<Piece::BLACK_QUEEN>() { return 0x1000000000000000ULL; }
 template<>
 constexpr Bitboard GetStartingPositionBitboard<Piece::BLACK_KING>() { return 0x0800000000000000ULL; }
+
+constexpr Bitboard GetStartingWhitePiecesBitboard() { 
+	Bitboard bitboard{0ULL};
+
+	#define X(piece) bitboard |= GetStartingPositionBitboard<Piece::piece>();
+	WHITE_PIECES_LIST
+	#undef X
+
+	return bitboard;
+ }
+
+ constexpr Bitboard GetStartingBlackPiecesBitboard() { 
+	Bitboard bitboard{0ULL};
+
+	#define X(piece) bitboard |= GetStartingPositionBitboard<Piece::piece>();
+	BLACK_PIECES_LIST
+	#undef X
+
+	return bitboard;
+ }
+
+ constexpr Bitboard GetStartingAllPiecesBitboard() { 
+	Bitboard bitboard{0ULL};
+
+	#define X(piece) bitboard |= GetStartingPositionBitboard<Piece::piece>();
+	PIECES_LIST
+	#undef X
+
+	return bitboard;
+ }
