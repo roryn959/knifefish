@@ -2,7 +2,7 @@
 
 
 Board::Board() :
-	m_isWhiteTurn{true}
+	m_isWhiteTurn{false}
 {
 	#define X(piece) m_pieceBitboards[Piece::piece] = GetStartingPositionBitboard<Piece::piece>();
 	PIECES_LIST
@@ -16,6 +16,7 @@ Bitboard Board::GetAllPieceBitboard() const {
 	return allPieces PIECES_LIST;
 	#undef X
 }
+
 Bitboard Board::GetWhitePieceBitboard() const {
 	Bitboard whitePieces{0ULL};
 
