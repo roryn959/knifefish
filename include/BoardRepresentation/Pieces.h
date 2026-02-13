@@ -34,7 +34,7 @@
 	X(BLACK_KING)
 
 #define X(piece) piece,
-enum Piece {
+enum Piece : uint8_t {
 	PIECES_LIST
 	NUM_PIECES,
 	EMPTY

@@ -20,6 +20,7 @@ public:
 	std::vector<Move> 	GenerateMoves();
 
 	void				GenerateWhiteMoves(std::vector<Move>& moves);
+	void				GenerateBlackMoves(std::vector<Move>& moves);
 
 	void				GenerateWhitePawnMoves(std::vector<Move>& moves);
 	void				GenerateWhitePawnPushes(std::vector<Move>& moves, Bitboard pawn, Bitboard push);
@@ -45,12 +46,15 @@ public:
 	void				GeneratePieceSlideSouth(std::vector<Move>& moves, Bitboard piece);
 	void				GeneratePieceSlideWest(std::vector<Move>& moves, Bitboard piece);
 
+	void				GenerateKingNorthMove(std::vector<Move>& moves);
+	void				GenerateKingEastMoves(std::vector<Move>& moves);
+	void				GenerateKingSouthMove(std::vector<Move>& moves);
+	void				GenerateKingWestMoves(std::vector<Move>& moves);
+
 	void				GenerateBishopMoves(std::vector<Move>& moves);
 	void				GenerateRookMoves(std::vector<Move>& moves);
 	void				GenerateQueenMoves(std::vector<Move>& moves);
 	void				GenerateKingMoves(std::vector<Move>&moves);
-
-	void				GenerateBlackMoves(std::vector<Move>& moves);
 
 	// Note: We should not need rank masks here because shifting should throw away invalid vertical moves anyway.
 	constexpr inline Bitboard ShiftNorth(Bitboard bitboard) const noexcept { return bitboard <<= 8; }
@@ -68,7 +72,6 @@ private:
 	Bitboard m_friendlyPieces;
 	Bitboard m_enemyPieces;
 
-	Bitboard m_viableSquares;
 	Bitboard m_emptySquares;
 
 	Bitboard m_pawns;

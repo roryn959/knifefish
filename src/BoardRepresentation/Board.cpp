@@ -2,7 +2,7 @@
 
 
 Board::Board() :
-	m_isWhiteTurn{false}
+	m_isWhiteTurn{true}
 {
 	#define X(piece) m_pieceBitboards[Piece::piece] = GetStartingPositionBitboard<Piece::piece>();
 	PIECES_LIST
