@@ -5,6 +5,7 @@
 #include "BoardRepresentation/Board.h"
 #include "Engine/Move.h"
 
+
 constexpr Bitboard RANK_2_MASK				{ 0x000000000000FF00ULL };
 constexpr Bitboard RANK_7_MASK				{ 0x00FF000000000000ULL };
 
@@ -12,6 +13,7 @@ constexpr Bitboard NON_FILE_A_MASK			{ 0x7F7F7F7F7F7F7F7FULL };
 constexpr Bitboard NON_FILE_A_OR_B_MASK		{ 0x3F3F3F3F3F3F3F3FULL };
 constexpr Bitboard NON_FILE_G_OR_H_MASK		{ 0xFCFCFCFCFCFCFCFCULL };
 constexpr Bitboard NON_FILE_H_MASK			{ 0xFEFEFEFEFEFEFEFEULL };
+
 
 class MoveGenerator {
 public:

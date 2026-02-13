@@ -5,6 +5,8 @@ std::ostream& operator<<(std::ostream& os, Move move) {
 	GetSquareFromBitmask(move.m_from.GetBoard()) <<
 	GetSquareFromBitmask(move.m_to.GetBoard()) <<
 	' ' <<
+	GetChar(move.m_promotionPiece) <<
+	' ' <<
 	move.m_isCapture <<
 	' ' <<
 	move.m_isDoublePawnPush <<

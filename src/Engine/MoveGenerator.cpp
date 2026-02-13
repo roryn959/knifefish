@@ -74,11 +74,18 @@ void MoveGenerator::GenerateWhitePawnPushes(std::vector<Move>& moves, Bitboard p
 	
 	if (northMove.IsEmpty()) return;
 
-	moves.push_back(Move{pawn, northMove, Piece::EMPTY, false, false, false, false});
+	bool seventhRank = !(pawn & RANK_7_MASK).IsEmpty();
+	if (seventhRank) {
+		moves.push_back(Move{pawn, northMove, Piece::WHITE_KNIGHT, false, false, false, false});
+		moves.push_back(Move{pawn, northMove, Piece::WHITE_BISHOP, false, false, false, false});
+		moves.push_back(Move{pawn, northMove, Piece::WHITE_ROOK, false, false, false, false});
+		moves.push_back(Move{pawn, northMove, Piece::WHITE_QUEEN, false, false, false, false});
+	} else {
+		moves.push_back(Move{pawn, northMove, Piece::EMPTY, false, false, false, false});
+	}
 
-	Bitboard secondRank = pawn & RANK_2_MASK;
-
-	if (secondRank.IsEmpty()) return;
+	bool secondRank = !(pawn & RANK_2_MASK).IsEmpty();
+	if (!secondRank) return;
 
 	Bitboard northNorthMove = ShiftNorth(northMove) & m_emptySquares;
 	if (!northNorthMove.IsEmpty()) {
@@ -87,13 +94,31 @@ void MoveGenerator::GenerateWhitePawnPushes(std::vector<Move>& moves, Bitboard p
 }
 
 void MoveGenerator::GenerateWhitePawnCaptures(std::vector<Move>& moves, Bitboard pawn, Bitboard push) {
+	bool seventhRank = !(pawn & RANK_7_MASK).IsEmpty();
+
 	Bitboard westCaptureMove = ShiftWest(push) & m_enemyPieces;
-	if (!westCaptureMove.IsEmpty())
-		moves.push_back(Move{pawn, westCaptureMove, Piece::EMPTY, true, false, false, false});
+	if (!westCaptureMove.IsEmpty()) {
+		if (seventhRank) {
+			moves.push_back(Move{pawn, westCaptureMove, Piece::WHITE_KNIGHT, true, false, false, false});
+			moves.push_back(Move{pawn, westCaptureMove, Piece::WHITE_BISHOP, true, false, false, false});
+			moves.push_back(Move{pawn, westCaptureMove, Piece::WHITE_ROOK, true, false, false, false});
+			moves.push_back(Move{pawn, westCaptureMove, Piece::WHITE_QUEEN, true, false, false, false});
+		} else {
+			moves.push_back(Move{pawn, westCaptureMove, Piece::EMPTY, true, false, false, false});
+		}
+	}
 
 	Bitboard eastCaptureMove = ShiftEast(push) & m_enemyPieces;
-	if (!eastCaptureMove.IsEmpty())
-		moves.push_back(Move{pawn, eastCaptureMove, Piece::EMPTY, true, false, false, false});
+	if (!eastCaptureMove.IsEmpty()) {
+		if (seventhRank) {
+			moves.push_back(Move{pawn, eastCaptureMove, Piece::WHITE_KNIGHT, true, false, false, false});
+			moves.push_back(Move{pawn, eastCaptureMove, Piece::WHITE_BISHOP, true, false, false, false});
+			moves.push_back(Move{pawn, eastCaptureMove, Piece::WHITE_ROOK, true, false, false, false});
+			moves.push_back(Move{pawn, eastCaptureMove, Piece::WHITE_QUEEN, true, false, false, false});
+		} else {
+			moves.push_back(Move{pawn, eastCaptureMove, Piece::EMPTY, true, false, false, false});
+		}
+	}
 }
 
 void MoveGenerator::GenerateBlackPawnMoves(std::vector<Move>& moves) {
@@ -111,11 +136,18 @@ void MoveGenerator::GenerateBlackPawnPushes(std::vector<Move>& moves, Bitboard p
 	
 	if (southMove.IsEmpty()) return;
 
-	moves.push_back(Move{pawn, southMove, Piece::EMPTY, false, false, false, false});
+	bool secondRank = !(pawn & RANK_2_MASK).IsEmpty();
+	if (secondRank) {
+		moves.push_back(Move{pawn, southMove, Piece::BLACK_KNIGHT, false, false, false, false});
+		moves.push_back(Move{pawn, southMove, Piece::BLACK_BISHOP, false, false, false, false});
+		moves.push_back(Move{pawn, southMove, Piece::BLACK_ROOK, false, false, false, false});
+		moves.push_back(Move{pawn, southMove, Piece::BLACK_QUEEN, false, false, false, false});
+	} else {
+		moves.push_back(Move{pawn, southMove, Piece::EMPTY, false, false, false, false});
+	}
 
-	Bitboard seventhRank = pawn & RANK_7_MASK;
-
-	if (seventhRank.IsEmpty()) return;
+	bool seventhRank = !(pawn & RANK_7_MASK).IsEmpty();
+	if (!seventhRank) return;
 
 	Bitboard southSouthMove = ShiftSouth(southMove) & m_emptySquares;
 	if (!southSouthMove.IsEmpty()) {
@@ -124,13 +156,31 @@ void MoveGenerator::GenerateBlackPawnPushes(std::vector<Move>& moves, Bitboard p
 }
 
 void MoveGenerator::GenerateBlackPawnCaptures(std::vector<Move>& moves, Bitboard pawn, Bitboard push) {
+	bool secondRank = !(pawn & RANK_2_MASK).IsEmpty();
+
 	Bitboard westCaptureMove = ShiftWest(push) & m_enemyPieces;
-	if (!westCaptureMove.IsEmpty())
-		moves.push_back(Move{pawn, westCaptureMove, Piece::EMPTY, true, false, false, false});
+	if (!westCaptureMove.IsEmpty()) {
+		if (secondRank) {
+			moves.push_back(Move{pawn, westCaptureMove, Piece::BLACK_KNIGHT, true, false, false, false});
+			moves.push_back(Move{pawn, westCaptureMove, Piece::BLACK_BISHOP, true, false, false, false});
+			moves.push_back(Move{pawn, westCaptureMove, Piece::BLACK_ROOK, true, false, false, false});
+			moves.push_back(Move{pawn, westCaptureMove, Piece::BLACK_QUEEN, true, false, false, false});
+		} else {
+			moves.push_back(Move{pawn, westCaptureMove, Piece::EMPTY, true, false, false, false});
+		}
+	}
 
 	Bitboard eastCaptureMove = ShiftEast(push) & m_enemyPieces;
-	if (!eastCaptureMove.IsEmpty())
-		moves.push_back(Move{pawn, eastCaptureMove, Piece::EMPTY, true, false, false, false});
+	if (!eastCaptureMove.IsEmpty()) {
+		if (secondRank) {
+			moves.push_back(Move{pawn, eastCaptureMove, Piece::BLACK_KNIGHT, true, false, false, false});
+			moves.push_back(Move{pawn, eastCaptureMove, Piece::BLACK_BISHOP, true, false, false, false});
+			moves.push_back(Move{pawn, eastCaptureMove, Piece::BLACK_ROOK, true, false, false, false});
+			moves.push_back(Move{pawn, eastCaptureMove, Piece::BLACK_QUEEN, true, false, false, false});
+		} else {
+			moves.push_back(Move{pawn, eastCaptureMove, Piece::EMPTY, true, false, false, false});
+		}
+	}
 }
 
 void MoveGenerator::GenerateKnightMoves(std::vector<Move>& moves) {
