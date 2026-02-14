@@ -1,22 +1,45 @@
 #include <iostream>
+#include <stack>
 
 #include "BoardRepresentation/Bitboard.h"
 #include "BoardRepresentation/Board.h"
 #include "BoardRepresentation/Square.h"
+
 #include "Engine/Move.h"
-#include "Engine/MoveGenerator.h"
+#include "Engine/Player.h"
+#include "Engine/Undo.h"
 
 
 int main() {
+	std::stack<Move> moves;
+	std::stack<Undo> undos;
+
 	Board board;
-	MoveGenerator mg(board);
+	Player player(board);
 
-	std::cout << board;
+	std::string userInput;
+	while (true) {
+		std::cout << board;
 
-	std::vector<Move> moves = mg.GenerateMoves();
+		Move move = player.GetMove();
 
-	for (Move m : moves) {
-		std::cout << m;
+		std::cin >> userInput;
+
+		if (userInput == "t") {
+			break;
+		} else if (userInput == "r") {
+			;
+		} else if (userInput == "u") {
+			if (moves.size() == 0) {
+				std::cout << "No moves to undo.\n";
+			} else {
+				board.UndoMove(moves.top(), undos.top());
+				moves.pop();
+				undos.pop();
+			}
+		} else {
+			undos.push(board.MakeMove(move)); moves.push(move);
+		}
 	}
 
 	return 0;

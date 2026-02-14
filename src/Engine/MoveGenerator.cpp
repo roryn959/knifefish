@@ -8,14 +8,25 @@ MoveGenerator::MoveGenerator(const Board& board) :
 {}
 
 std::vector<Move> MoveGenerator::GenerateMoves() {
+	std::vector<Move> pseudoMoves = GeneratePseudoMoves();
+
+	return pseudoMoves;
+}
+
+std::vector<Move> MoveGenerator::GeneratePseudoMoves() {
+	m_occupiedSquares = m_board.GetAllPieceBitboard();
+	m_emptySquares = ~m_occupiedSquares;
+
 	std::vector<Move> moves;
 	if (m_board.IsWhiteTurn()) {
-		PrepareWhiteMoveGeneration(moves);
+		GenerateAttackSet();
+		PrepareWhiteMoveGeneration();
 		GenerateWhitePawnMoves(moves);
 		GenerateWhiteCastleMoves(moves);
 	}
 	else {
-		PrepareBlackMoveGeneration(moves);
+		GenerateAttackSet();
+		PrepareBlackMoveGeneration();
 		GenerateBlackPawnMoves(moves);
 		GenerateBlackCastleMoves(moves);
 	}
@@ -29,11 +40,9 @@ std::vector<Move> MoveGenerator::GenerateMoves() {
 	return moves;
 }
 
-void MoveGenerator::PrepareWhiteMoveGeneration(std::vector<Move>& moves) {
+void MoveGenerator::PrepareWhiteMoveGeneration() {
 	m_friendlyPieces = m_board.GetWhitePieceBitboard();
 	m_enemyPieces = m_board.GetBlackPieceBitboard();
-
-	m_emptySquares = ~m_board.GetAllPieceBitboard();
 
 	m_pawns = m_board.GetPieceBitboard(Piece::WHITE_PAWN);
 	m_knights = m_board.GetPieceBitboard(Piece::WHITE_KNIGHT);
@@ -43,7 +52,7 @@ void MoveGenerator::PrepareWhiteMoveGeneration(std::vector<Move>& moves) {
 	m_king = m_board.GetPieceBitboard(Piece::WHITE_KING);
 }
 
-void MoveGenerator::PrepareBlackMoveGeneration(std::vector<Move>& moves) {
+void MoveGenerator::PrepareBlackMoveGeneration() {
 	m_friendlyPieces = m_board.GetBlackPieceBitboard();
 	m_enemyPieces = m_board.GetWhitePieceBitboard();
 
@@ -55,6 +64,241 @@ void MoveGenerator::PrepareBlackMoveGeneration(std::vector<Move>& moves) {
 	m_rooks = m_board.GetPieceBitboard(Piece::BLACK_ROOK);
 	m_queens = m_board.GetPieceBitboard(Piece::BLACK_QUEEN);
 	m_king = m_board.GetPieceBitboard(Piece::BLACK_KING);
+}
+
+void MoveGenerator::GenerateAttackSet() {
+
+	if (m_board.IsWhiteTurn())
+		PrepareBlackMoveGeneration();
+	else
+		PrepareWhiteMoveGeneration();
+
+	m_attackSet = 0ULL;
+
+	GeneratePawnAttackSet();
+	GenerateKnightAttackSet();
+	GenerateBishopAttackSet();
+	GenerateRookAttackSet();
+	GenerateQueenAttackSet();
+	GenerateKingAttackSet();
+
+	// ----------
+
+	std::cout << '\n';
+
+	char boardArray[64];
+	for (int i = 0; i < 64; ++i) {
+		Bitboard bitPosition = 1ULL << i;
+
+		if (!(m_attackSet & bitPosition).IsEmpty()) 
+			boardArray[i] = 'X';
+		else
+			boardArray[i] = 'O';
+	}
+
+	int col = 0;
+	for (int i = 63; i >= 0; --i) {
+
+		std::cout << boardArray[i] << ' ';
+
+		if (++col == 8) {
+			std::cout << '\n';
+			col = 0;
+		}
+	}
+
+	std::cout << '\n';
+
+	// ----------
+}
+
+void MoveGenerator::GeneratePawnAttackSet() {
+	if (m_pawns.IsEmpty()) return;
+
+	if (m_board.IsWhiteTurn()) {
+		m_attackSet |= ShiftSouthWest(m_pawns);
+		m_attackSet |= ShiftSouthEast(m_pawns);
+	} else {
+		m_attackSet |= ShiftNorthWest(m_pawns);
+		m_attackSet |= ShiftNorthEast(m_pawns);
+	}
+}
+
+void MoveGenerator::GenerateKnightAttackSet() {
+	if (m_knights.IsEmpty()) return;
+
+	Bitboard north = ShiftNorth(m_knights);
+	m_attackSet |= ShiftNorthWest(north);
+	m_attackSet |= ShiftNorthEast(north);
+
+	Bitboard east = ShiftEast(m_knights);
+	m_attackSet |= ShiftNorthEast(east);
+	m_attackSet |= ShiftSouthEast(east);
+
+	Bitboard south = ShiftSouth(m_knights);
+	m_attackSet |= ShiftSouthEast(south);
+	m_attackSet |= ShiftSouthWest(south);
+
+	Bitboard west = ShiftWest(m_knights);
+	m_attackSet |= ShiftNorthWest(west);
+	m_attackSet |= ShiftSouthWest(west);
+}
+
+void MoveGenerator::GenerateBishopAttackSet() {
+	if (m_bishops.IsEmpty()) return;
+
+	Bitboard shadows;
+
+	shadows = m_bishops;
+	shadows = ShiftNorthEast(shadows);
+	while (!shadows.IsEmpty()) {
+		m_attackSet |= shadows;
+		shadows &= m_emptySquares;
+		shadows = ShiftNorthEast(shadows);
+	}
+
+	shadows = m_bishops;
+	shadows = ShiftSouthEast(shadows);
+	while (!shadows.IsEmpty()) {
+		m_attackSet |= shadows;
+		shadows &= m_emptySquares;
+		shadows = ShiftSouthEast(shadows);
+	}
+
+	shadows = m_bishops;
+	shadows = ShiftSouthWest(shadows);
+	while (!shadows.IsEmpty()) {
+		m_attackSet |= shadows;
+		shadows &= m_emptySquares;
+		shadows = ShiftSouthWest(shadows);
+	}
+
+	shadows = m_bishops;
+	shadows = ShiftNorthWest(shadows);
+	while (!shadows.IsEmpty()) {
+		m_attackSet |= shadows;
+		shadows &= m_emptySquares;
+		shadows = ShiftNorthWest(shadows);
+	}
+}
+
+void MoveGenerator::GenerateRookAttackSet() {
+	if (m_rooks.IsEmpty()) return;
+
+	Bitboard shadows;
+	
+	shadows = m_rooks;
+	shadows = ShiftNorth(shadows);
+	while (!shadows.IsEmpty()) {
+		m_attackSet |= shadows;
+		shadows &= m_emptySquares;
+		shadows = ShiftNorth(shadows);
+	}
+
+	shadows = m_rooks;
+	shadows = ShiftEast(shadows);
+	while (!shadows.IsEmpty()) {
+		m_attackSet |= shadows;
+		shadows &= m_emptySquares;
+		shadows = ShiftEast(shadows);
+	}
+
+	shadows = m_rooks;
+	shadows = ShiftSouth(shadows);
+	while (!shadows.IsEmpty()) {
+		m_attackSet |= shadows;
+		shadows &= m_emptySquares;
+		shadows = ShiftSouth(shadows);
+	}
+
+	shadows = m_rooks;
+	shadows = ShiftWest(shadows);
+	while (!shadows.IsEmpty()) {
+		m_attackSet |= shadows;
+		shadows &= m_emptySquares;
+		shadows = ShiftWest(shadows);
+	}
+}
+
+void MoveGenerator::GenerateQueenAttackSet() {
+	if (m_queens.IsEmpty()) return;
+
+	Bitboard shadows;
+
+	shadows = m_queens;
+	shadows = ShiftNorthEast(shadows);
+	while (!shadows.IsEmpty()) {
+		m_attackSet |= shadows;
+		shadows &= m_emptySquares;
+		shadows = ShiftNorthEast(shadows);
+	}
+
+	shadows = m_queens;
+	shadows = ShiftSouthEast(shadows);
+	while (!shadows.IsEmpty()) {
+		m_attackSet |= shadows;
+		shadows &= m_emptySquares;
+		shadows = ShiftSouthEast(shadows);
+	}
+
+	shadows = m_queens;
+	shadows = ShiftSouthWest(shadows);
+	while (!shadows.IsEmpty()) {
+		m_attackSet |= shadows;
+		shadows &= m_emptySquares;
+		shadows = ShiftSouthWest(shadows);
+	}
+
+	shadows = m_queens;
+	shadows = ShiftNorthWest(shadows);
+	while (!shadows.IsEmpty()) {
+		m_attackSet |= shadows;
+		shadows &= m_emptySquares;
+		shadows = ShiftNorthWest(shadows);
+	}
+
+	shadows = m_queens;
+	shadows = ShiftNorth(shadows);
+	while (!shadows.IsEmpty()) {
+		m_attackSet |= shadows;
+		shadows &= m_emptySquares;
+		shadows = ShiftNorth(shadows);
+	}
+
+	shadows = m_queens;
+	shadows = ShiftEast(shadows);
+	while (!shadows.IsEmpty()) {
+		m_attackSet |= shadows;
+		shadows &= m_emptySquares;
+		shadows = ShiftEast(shadows);
+	}
+
+	shadows = m_queens;
+	shadows = ShiftSouth(shadows);
+	while (!shadows.IsEmpty()) {
+		m_attackSet |= shadows;
+		shadows &= m_emptySquares;
+		shadows = ShiftSouth(shadows);
+	}
+
+	shadows = m_queens;
+	shadows = ShiftWest(shadows);
+	while (!shadows.IsEmpty()) {
+		m_attackSet |= shadows;
+		shadows &= m_emptySquares;
+		shadows = ShiftWest(shadows);
+	}
+}
+
+void MoveGenerator::GenerateKingAttackSet() {
+	m_attackSet |= ShiftNorth(m_king);
+	m_attackSet |= ShiftNorthEast(m_king);
+	m_attackSet |= ShiftEast(m_king);
+	m_attackSet |= ShiftSouthEast(m_king);
+	m_attackSet |= ShiftSouth(m_king);
+	m_attackSet |= ShiftSouthWest(m_king);
+	m_attackSet |= ShiftWest(m_king);
+	m_attackSet |= ShiftNorthWest(m_king);
 }
 
 void MoveGenerator::GenerateWhitePawnMoves(std::vector<Move>& moves) {
@@ -546,14 +790,16 @@ void MoveGenerator::GenerateKingMoves(std::vector<Move>& moves) {
 
 void MoveGenerator::GenerateWhiteCastleMoves(std::vector<Move>& moves) {
 	if (m_board.IsWhiteKingsideCastlePermitted()) {
-		bool isKingsideClear = !(m_emptySquares & WHITE_KINGSIDE_CASTLE_SPACE_MASK).IsEmpty();
+		//bool isKingsideClear = !(m_emptySquares & WHITE_KINGSIDE_CASTLE_SPACE_MASK).IsEmpty();
+		bool isKingsideClear = (m_occupiedSquares & WHITE_KINGSIDE_CASTLE_SPACE_MASK).IsEmpty();
 		if (isKingsideClear) {
 			moves.push_back(Move{m_king, G1_MASK, Piece::EMPTY, false, false, false, true});
 		}
 	}
 
 	if (m_board.IsWhiteQueensideCastlePermitted()) {
-		bool isQueensideClear = !(m_emptySquares & WHITE_QUEENSIDE_CASTLE_SPACE_MASK).IsEmpty();
+		//bool isQueensideClear = !(m_emptySquares & WHITE_QUEENSIDE_CASTLE_SPACE_MASK).IsEmpty();
+		bool isQueensideClear = (m_occupiedSquares & WHITE_QUEENSIDE_CASTLE_SPACE_MASK).IsEmpty();
 		if (isQueensideClear) {
 			moves.push_back(Move{m_king, C1_MASK, Piece::EMPTY, false, false, false, true});
 		}
@@ -562,14 +808,16 @@ void MoveGenerator::GenerateWhiteCastleMoves(std::vector<Move>& moves) {
 
 void MoveGenerator::GenerateBlackCastleMoves(std::vector<Move>& moves) {
 	if (m_board.IsBlackKingsideCastlePermitted()) {
-		bool isKingsideClear = !(m_emptySquares & BLACK_KINGSIDE_CASTLE_SPACE_MASK).IsEmpty();
+		//bool isKingsideClear = !(m_emptySquares & BLACK_KINGSIDE_CASTLE_SPACE_MASK).IsEmpty();
+		bool isKingsideClear = (m_occupiedSquares & BLACK_KINGSIDE_CASTLE_SPACE_MASK).IsEmpty();
 		if (isKingsideClear) {
 			moves.push_back(Move{m_king, G8_MASK, Piece::EMPTY, false, false, false, true});
 		}
 	}
 
 	if (m_board.IsBlackQueensideCastlePermitted()) {
-		bool isQueensideClear = !(m_emptySquares & BLACK_QUEENSIDE_CASTLE_SPACE_MASK).IsEmpty();
+		//bool isQueensideClear = !(m_emptySquares & BLACK_QUEENSIDE_CASTLE_SPACE_MASK).IsEmpty();
+		bool isQueensideClear = (m_occupiedSquares & BLACK_QUEENSIDE_CASTLE_SPACE_MASK).IsEmpty();
 		if (isQueensideClear) {
 			moves.push_back(Move{m_king, C8_MASK, Piece::EMPTY, false, false, false, true});
 		}

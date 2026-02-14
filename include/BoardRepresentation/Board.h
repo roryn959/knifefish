@@ -2,8 +2,10 @@
 
 #include <iostream>
 
+#include "BoardRepresentation/Pieces.h"
+
 #include "Engine/Move.h"
-#include "Pieces.h"
+#include "Engine/Undo.h"
 
 
 class Board {
@@ -25,23 +27,32 @@ public:
 	Piece GetWhitePieceAtSquare(Bitboard bb);
 	Piece GetBlackPieceAtSquare(Bitboard bb);
 
+	inline Bitboard GetEnPassantSquare() const { return m_enPassantSquare; }
+
 	inline void PickUp(Piece piece, Bitboard bb) { m_pieceBitboards[piece] &= ~bb; }
 	inline void PutDown(Piece piece, Bitboard bb) { m_pieceBitboards[piece] |= bb; }
 
-	void MakeMove(const Move& move);
-
-	void MakeSimpleMove(const Move& move);
+	Undo MakeMove(const Move& move);
 	void MakeCastleMove(const Move& move);
+	void MakePromotionMove(const Move& move);
+	void MakeSimpleMove(const Move& move);
+
+	void UndoMove(const Move& move, const Undo& undo);
+	void UndoCastleMove(const Move& move);
+	void UndoPromotionMove(const Move& move, const Undo& undo);
+	void UndoSimpleMove(const Move& move, const Undo& undo);
 
 	friend std::ostream& operator<<(std::ostream& os, const Board& board);
 
 private:
 	Bitboard m_pieceBitboards[Piece::NUM_PIECES];
 
-	bool	m_isWhiteTurn;
+	bool m_isWhiteTurn;
 
-	bool	m_isWhiteKingsideCastlePermitted;
-	bool	m_isWhiteQueensideCastlePermitted;
-	bool	m_isBlackKingsideCastlePermitted;
-	bool	m_isBlackQueensideCastlePermitted;
+	bool m_isWhiteKingsideCastlePermitted;
+	bool m_isWhiteQueensideCastlePermitted;
+	bool m_isBlackKingsideCastlePermitted;
+	bool m_isBlackQueensideCastlePermitted;
+
+	Bitboard m_enPassantSquare;
 };
