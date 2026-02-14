@@ -41,23 +41,23 @@ public:
 		return lsb;
 	}
 
-	constexpr inline Bitboard& 	operator<<=(int s) 					noexcept	{ m_board <<= s; return *this; }
-	constexpr inline Bitboard	operator<<(int s)			const	noexcept	{ Bitboard tmp = *this; tmp <<= s; return tmp; }
+	constexpr inline Bitboard& 	operator<<=(int s) 						noexcept	{ m_board <<= s; return *this; }
+	constexpr inline Bitboard	operator<<(int s)				const	noexcept	{ Bitboard tmp = *this; return tmp <<= s; }
 
-	constexpr inline Bitboard& 	operator>>=(int s) 					noexcept	{ m_board >>= s; return *this; }
-	constexpr inline Bitboard	operator>>(int s)			const	noexcept	{ Bitboard tmp = *this; tmp >>= s; return tmp; }
+	constexpr inline Bitboard& 	operator>>=(int s) 						noexcept	{ m_board >>= s; return *this; }
+	constexpr inline Bitboard	operator>>(int s)				const	noexcept	{ Bitboard tmp = *this; return tmp >>= s; }
 
-	constexpr inline Bitboard&	operator|=(Bitboard rhs)			noexcept 	{ m_board |= rhs.m_board; return *this; }
-	constexpr inline Bitboard	operator|(Bitboard rhs)		const	noexcept 	{ Bitboard tmp = *this; tmp |= rhs; return tmp; } // CHECK: Can we reduce this by one statement?
+	constexpr inline Bitboard&	operator|=(const Bitboard rhs)			noexcept 	{ m_board |= rhs.m_board; return *this; }
+	constexpr inline Bitboard	operator|(const Bitboard rhs)	const	noexcept 	{ Bitboard tmp = *this; return tmp |= rhs; }
 
-	constexpr inline Bitboard&	operator&=(Bitboard rhs)			noexcept 	{ m_board &= rhs.m_board; return *this; }
-	constexpr inline Bitboard	operator&(Bitboard rhs)		const 	noexcept 	{ Bitboard tmp = *this; tmp &= rhs; return tmp; } // CHECK: Can we reduce this by one statement?
+	constexpr inline Bitboard&	operator&=(const Bitboard rhs)			noexcept 	{ m_board &= rhs.m_board; return *this; }
+	constexpr inline Bitboard	operator&(const Bitboard rhs)	const 	noexcept 	{ Bitboard tmp = *this; return tmp &= rhs; }
 
-	constexpr inline Bitboard&	operator^=(Bitboard rhs)			noexcept	{ m_board ^= rhs.m_board; return *this; }
-	constexpr inline Bitboard	operator^(Bitboard rhs)		const	noexcept	{ Bitboard tmp = *this; tmp ^= rhs; return tmp; } // CHECK: Can we reduce this by one statement?
+	constexpr inline Bitboard&	operator^=(const Bitboard rhs)			noexcept	{ m_board ^= rhs.m_board; return *this; }
+	constexpr inline Bitboard	operator^(const Bitboard rhs)	const	noexcept	{ Bitboard tmp = *this; return tmp ^= rhs; }
 
-	constexpr inline bool		operator==(Bitboard rhs)			noexcept	{ return m_board == rhs.m_board; }
-	constexpr inline bool		operator!=(Bitboard rhs)	const 	noexcept	{ return m_board != rhs.m_board; }
+	constexpr inline bool		operator==(const Bitboard rhs)	const	noexcept	{ return m_board == rhs.m_board; }
+	constexpr inline bool		operator!=(const Bitboard rhs)	const 	noexcept	{ return m_board != rhs.m_board; }
 
 	constexpr inline Bitboard	operator~()					const	noexcept	{ return Bitboard(~m_board); }
 
@@ -69,4 +69,33 @@ private:
 	uint64_t m_board;
 };
 
-static_assert(sizeof(Bitboard) == sizeof(uint64_t));
+constexpr Bitboard A1_MASK { 0x0000000000000080ULL };
+constexpr Bitboard B1_MASK { A1_MASK >> 1 };
+constexpr Bitboard C1_MASK { A1_MASK >> 2 };
+constexpr Bitboard D1_MASK { A1_MASK >> 3 };
+constexpr Bitboard E1_MASK { A1_MASK >> 4 };
+constexpr Bitboard F1_MASK { A1_MASK >> 5 };
+constexpr Bitboard G1_MASK { A1_MASK >> 6 };
+constexpr Bitboard H1_MASK { A1_MASK >> 7 };
+
+constexpr Bitboard A8_MASK { 0x8000000000000000ULL };
+constexpr Bitboard B8_MASK { A8_MASK >> 1 };
+constexpr Bitboard C8_MASK { A8_MASK >> 2 };
+constexpr Bitboard D8_MASK { A8_MASK >> 3 };
+constexpr Bitboard E8_MASK { A8_MASK >> 4 };
+constexpr Bitboard F8_MASK { A8_MASK >> 5 };
+constexpr Bitboard G8_MASK { A8_MASK >> 6 };
+constexpr Bitboard H8_MASK { A8_MASK >> 7 };
+
+constexpr Bitboard RANK_2_MASK				{ 0x000000000000FF00ULL };
+constexpr Bitboard RANK_7_MASK				{ 0x00FF000000000000ULL };
+
+constexpr Bitboard NON_FILE_A_MASK			{ 0x7F7F7F7F7F7F7F7FULL };
+constexpr Bitboard NON_FILE_A_OR_B_MASK		{ 0x3F3F3F3F3F3F3F3FULL };
+constexpr Bitboard NON_FILE_G_OR_H_MASK		{ 0xFCFCFCFCFCFCFCFCULL };
+constexpr Bitboard NON_FILE_H_MASK			{ 0xFEFEFEFEFEFEFEFEULL };
+
+constexpr Bitboard WHITE_KINGSIDE_CASTLE_SPACE_MASK		{ F1_MASK | G1_MASK };
+constexpr Bitboard WHITE_QUEENSIDE_CASTLE_SPACE_MASK	{ B1_MASK | C1_MASK | D1_MASK };
+constexpr Bitboard BLACK_KINGSIDE_CASTLE_SPACE_MASK		{ F8_MASK | G8_MASK };
+constexpr Bitboard BLACK_QUEENSIDE_CASTLE_SPACE_MASK	{ B8_MASK | C8_MASK | D8_MASK };

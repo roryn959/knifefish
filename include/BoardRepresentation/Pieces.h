@@ -71,13 +71,13 @@ constexpr Bitboard GetStartingPositionBitboard<Piece::WHITE_PAWN>() { return Bit
 template<>
 constexpr Bitboard GetStartingPositionBitboard<Piece::WHITE_KNIGHT>() { return Bitboard(0x000000008000040ULL); }
 template<>
-constexpr Bitboard GetStartingPositionBitboard<Piece::WHITE_BISHOP>() { return 0x0000000000000024ULL; }
+constexpr Bitboard GetStartingPositionBitboard<Piece::WHITE_BISHOP>() { return 0x0000000000000020ULL; }
 template<>
 constexpr Bitboard GetStartingPositionBitboard<Piece::WHITE_ROOK>() { return 0x0000000004000081ULL; }
 template<>
 constexpr Bitboard GetStartingPositionBitboard<Piece::WHITE_QUEEN>() { return 0x0000002000000010ULL; }
 template<>
-constexpr Bitboard GetStartingPositionBitboard<Piece::WHITE_KING>() { return 0x0000000010000000ULL; } //0x0000000000000008ULL; }
+constexpr Bitboard GetStartingPositionBitboard<Piece::WHITE_KING>() { return 0x0000000000000008ULL; }
 template<>
 constexpr Bitboard GetStartingPositionBitboard<Piece::BLACK_PAWN>() { return 0x00EF000000000200ULL; }
 template<>

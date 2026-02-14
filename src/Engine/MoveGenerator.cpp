@@ -9,15 +9,27 @@ MoveGenerator::MoveGenerator(const Board& board) :
 
 std::vector<Move> MoveGenerator::GenerateMoves() {
 	std::vector<Move> moves;
-	if (m_board.IsWhiteTurn())
-		GenerateWhiteMoves(moves);
-	else
-		GenerateBlackMoves(moves);
+	if (m_board.IsWhiteTurn()) {
+		PrepareWhiteMoveGeneration(moves);
+		GenerateWhitePawnMoves(moves);
+		GenerateWhiteCastleMoves(moves);
+	}
+	else {
+		PrepareBlackMoveGeneration(moves);
+		GenerateBlackPawnMoves(moves);
+		GenerateBlackCastleMoves(moves);
+	}
+
+	GenerateKnightMoves(moves);
+	GenerateBishopMoves(moves);
+	GenerateRookMoves(moves);
+	GenerateQueenMoves(moves);
+	GenerateKingMoves(moves);
 	
 	return moves;
 }
 
-void MoveGenerator::GenerateWhiteMoves(std::vector<Move>& moves) {
+void MoveGenerator::PrepareWhiteMoveGeneration(std::vector<Move>& moves) {
 	m_friendlyPieces = m_board.GetWhitePieceBitboard();
 	m_enemyPieces = m_board.GetBlackPieceBitboard();
 
@@ -29,16 +41,9 @@ void MoveGenerator::GenerateWhiteMoves(std::vector<Move>& moves) {
 	m_rooks = m_board.GetPieceBitboard(Piece::WHITE_ROOK);
 	m_queens = m_board.GetPieceBitboard(Piece::WHITE_QUEEN);
 	m_king = m_board.GetPieceBitboard(Piece::WHITE_KING);
-
-	GenerateWhitePawnMoves(moves);
-	GenerateKnightMoves(moves);
-	GenerateBishopMoves(moves);
-	GenerateRookMoves(moves);
-	GenerateQueenMoves(moves);
-	GenerateKingMoves(moves);
 }
 
-void MoveGenerator::GenerateBlackMoves(std::vector<Move>& moves) {
+void MoveGenerator::PrepareBlackMoveGeneration(std::vector<Move>& moves) {
 	m_friendlyPieces = m_board.GetBlackPieceBitboard();
 	m_enemyPieces = m_board.GetWhitePieceBitboard();
 
@@ -50,13 +55,6 @@ void MoveGenerator::GenerateBlackMoves(std::vector<Move>& moves) {
 	m_rooks = m_board.GetPieceBitboard(Piece::BLACK_ROOK);
 	m_queens = m_board.GetPieceBitboard(Piece::BLACK_QUEEN);
 	m_king = m_board.GetPieceBitboard(Piece::BLACK_KING);
-
-	GenerateBlackPawnMoves(moves);
-	GenerateKnightMoves(moves);
-	GenerateBishopMoves(moves);
-	GenerateRookMoves(moves);
-	GenerateQueenMoves(moves);
-	GenerateKingMoves(moves);
 }
 
 void MoveGenerator::GenerateWhitePawnMoves(std::vector<Move>& moves) {
@@ -544,4 +542,36 @@ void MoveGenerator::GenerateKingMoves(std::vector<Move>& moves) {
 	GenerateKingEastMoves(moves);
 	GenerateKingSouthMove(moves);
 	GenerateKingWestMoves(moves);
+}
+
+void MoveGenerator::GenerateWhiteCastleMoves(std::vector<Move>& moves) {
+	if (m_board.IsWhiteKingsideCastlePermitted()) {
+		bool isKingsideClear = !(m_emptySquares & WHITE_KINGSIDE_CASTLE_SPACE_MASK).IsEmpty();
+		if (isKingsideClear) {
+			moves.push_back(Move{m_king, G1_MASK, Piece::EMPTY, false, false, false, true});
+		}
+	}
+
+	if (m_board.IsWhiteQueensideCastlePermitted()) {
+		bool isQueensideClear = !(m_emptySquares & WHITE_QUEENSIDE_CASTLE_SPACE_MASK).IsEmpty();
+		if (isQueensideClear) {
+			moves.push_back(Move{m_king, C1_MASK, Piece::EMPTY, false, false, false, true});
+		}
+	}
+}
+
+void MoveGenerator::GenerateBlackCastleMoves(std::vector<Move>& moves) {
+	if (m_board.IsBlackKingsideCastlePermitted()) {
+		bool isKingsideClear = !(m_emptySquares & BLACK_KINGSIDE_CASTLE_SPACE_MASK).IsEmpty();
+		if (isKingsideClear) {
+			moves.push_back(Move{m_king, G8_MASK, Piece::EMPTY, false, false, false, true});
+		}
+	}
+
+	if (m_board.IsBlackQueensideCastlePermitted()) {
+		bool isQueensideClear = !(m_emptySquares & BLACK_QUEENSIDE_CASTLE_SPACE_MASK).IsEmpty();
+		if (isQueensideClear) {
+			moves.push_back(Move{m_king, C8_MASK, Piece::EMPTY, false, false, false, true});
+		}
+	}
 }

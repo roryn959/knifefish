@@ -6,23 +6,14 @@
 #include "Engine/Move.h"
 
 
-constexpr Bitboard RANK_2_MASK				{ 0x000000000000FF00ULL };
-constexpr Bitboard RANK_7_MASK				{ 0x00FF000000000000ULL };
-
-constexpr Bitboard NON_FILE_A_MASK			{ 0x7F7F7F7F7F7F7F7FULL };
-constexpr Bitboard NON_FILE_A_OR_B_MASK		{ 0x3F3F3F3F3F3F3F3FULL };
-constexpr Bitboard NON_FILE_G_OR_H_MASK		{ 0xFCFCFCFCFCFCFCFCULL };
-constexpr Bitboard NON_FILE_H_MASK			{ 0xFEFEFEFEFEFEFEFEULL };
-
-
 class MoveGenerator {
 public:
 	MoveGenerator(const Board& board);
 
 	std::vector<Move> 	GenerateMoves();
 
-	void				GenerateWhiteMoves(std::vector<Move>& moves);
-	void				GenerateBlackMoves(std::vector<Move>& moves);
+	void				PrepareWhiteMoveGeneration(std::vector<Move>& moves);
+	void				PrepareBlackMoveGeneration(std::vector<Move>& moves);
 
 	void				GenerateWhitePawnMoves(std::vector<Move>& moves);
 	void				GenerateWhitePawnPushes(std::vector<Move>& moves, Bitboard pawn, Bitboard push);
@@ -56,7 +47,10 @@ public:
 	void				GenerateBishopMoves(std::vector<Move>& moves);
 	void				GenerateRookMoves(std::vector<Move>& moves);
 	void				GenerateQueenMoves(std::vector<Move>& moves);
-	void				GenerateKingMoves(std::vector<Move>&moves);
+	void				GenerateKingMoves(std::vector<Move>& moves);
+
+	void 				GenerateWhiteCastleMoves(std::vector<Move>& moves);
+	void 				GenerateBlackCastleMoves(std::vector<Move>& moves);
 
 	// Note: We should not need rank masks here because shifting should throw away invalid vertical moves anyway.
 	constexpr inline Bitboard ShiftNorth(Bitboard bitboard) const noexcept { return bitboard <<= 8; }
