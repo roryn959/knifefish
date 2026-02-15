@@ -1,6 +1,7 @@
 #pragma once
 
 #include <iostream>
+#include <string>
 
 #include "BoardRepresentation/Bitboard.h"
 #include "BoardRepresentation/Pieces.h"
@@ -14,6 +15,8 @@ struct Move {
 	bool		m_isDoublePawnPush;
 	bool		m_isEnPassant;
 	bool		m_isCastle;
+
+	std::string ToString() const;
 };
 
 std::ostream& operator<<(std::ostream& os, Move move);

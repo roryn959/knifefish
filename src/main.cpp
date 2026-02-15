@@ -1,46 +1,59 @@
 #include <iostream>
-#include <stack>
 
-#include "BoardRepresentation/Bitboard.h"
-#include "BoardRepresentation/Board.h"
-#include "BoardRepresentation/Square.h"
-
-#include "Engine/Move.h"
-#include "Engine/Player.h"
-#include "Engine/Undo.h"
+#include "Interface/Interface.h"
 
 
 int main() {
-	std::stack<Move> moves;
-	std::stack<Undo> undos;
+	// std::stack<Move> pastMoves;
+	// std::stack<Undo> undos;
 
-	Board board;
-	Player player(board);
+	// Board board;
+	// MoveGenerator mg(board);
+	// Player player(board);
 
-	std::string userInput;
-	while (true) {
-		std::cout << board;
+	// std::string userInput;
+	// while (true) {
+	// 	std::cout << board;
 
-		Move move = player.GetMove();
+	// 	Move move = player.GetMove();
 
-		std::cin >> userInput;
+	// 	std::cin >> userInput;
 
-		if (userInput == "t") {
-			break;
-		} else if (userInput == "r") {
-			;
-		} else if (userInput == "u") {
-			if (moves.size() == 0) {
-				std::cout << "No moves to undo.\n";
-			} else {
-				board.UndoMove(moves.top(), undos.top());
-				moves.pop();
-				undos.pop();
-			}
-		} else {
-			undos.push(board.MakeMove(move)); moves.push(move);
-		}
-	}
+	// 	if (userInput == "t") {
+	// 		break;
+	// 	} else if (userInput == "r") {
+	// 		;
+	// 	} else if (userInput == "u") {
+	// 		if (pastMoves.size() == 0) {
+	// 			std::cout << "No moves to undo.\n";
+	// 		} else {
+	// 			board.UndoMove(pastMoves.top(), undos.top());
+	// 			pastMoves.pop();
+	// 			undos.pop();
+	// 		}
+	// 	} else if (userInput == "k") {
+	// 		undos.push(board.MakeMove(move));
+	// 		pastMoves.push(move);
+	// 	} else {
+	// 		std::vector<Move> moves = mg.GenerateMoves();
+			
+	// 		for (const Move& move : moves) {
+	// 			std::string moveString = ToString(GetSquareFromBitmask(move.m_from.GetBoard())) + ToString(GetSquareFromBitmask(move.m_to.GetBoard()));
+	// 			if (userInput == moveString) {
+	// 				undos.push(board.MakeMove(move));
+	// 				pastMoves.push(move);
+	// 				break;
+	// 			}
+	// 		}
+
+	// 		std::cout << "No matching move found.\n";
+	// 	}
+	// }
+
+	Interface interface;
+
+	interface.ListenForConnection();
+	interface.ListenForCommands();
 
 	return 0;
 }

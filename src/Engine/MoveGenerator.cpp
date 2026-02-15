@@ -7,9 +7,9 @@ MoveGenerator::MoveGenerator(const Board& board) :
 	m_board{board}
 {}
 
-std::vector<Move> MoveGenerator::GenerateMoves() {
+std::vector<Move> MoveGenerator::GenerateLegalMoves() {
 	std::vector<Move> pseudoMoves = GeneratePseudoMoves();
-
+	// Plug this hole!
 	return pseudoMoves;
 }
 
@@ -82,32 +82,35 @@ void MoveGenerator::GenerateAttackSet() {
 	GenerateQueenAttackSet();
 	GenerateKingAttackSet();
 
+	// The below can probably be cut, but might be useful for checking why move generation
+	// is not working, so keeping around until I have perft going!
+
 	// ----------
 
-	std::cout << '\n';
+	// std::cout << '\n';
 
-	char boardArray[64];
-	for (int i = 0; i < 64; ++i) {
-		Bitboard bitPosition = 1ULL << i;
+	// char boardArray[64];
+	// for (int i = 0; i < 64; ++i) {
+	// 	Bitboard bitPosition = 1ULL << i;
 
-		if ((m_board.GetEnPassantSquare() & bitPosition))//((m_attackSet & bitPosition)) 
-			boardArray[i] = 'X';
-		else
-			boardArray[i] = 'O';
-	}
+	// 	if ((m_board.GetEnPassantSquare() & bitPosition))//((m_attackSet & bitPosition)) 
+	// 		boardArray[i] = 'X';
+	// 	else
+	// 		boardArray[i] = 'O';
+	// }
 
-	int col = 0;
-	for (int i = 63; i >= 0; --i) {
+	// int col = 0;
+	// for (int i = 63; i >= 0; --i) {
 
-		std::cout << boardArray[i] << ' ';
+	// 	std::cout << boardArray[i] << ' ';
 
-		if (++col == 8) {
-			std::cout << '\n';
-			col = 0;
-		}
-	}
+	// 	if (++col == 8) {
+	// 		std::cout << '\n';
+	// 		col = 0;
+	// 	}
+	// }
 
-	std::cout << '\n';
+	// std::cout << '\n';
 
 	// ----------
 }

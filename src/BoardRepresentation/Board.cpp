@@ -1,14 +1,18 @@
 #include "BoardRepresentation/Board.h"
 
+void Board::Initialise() {
+	// Eventually will do things like set up tables and stuff
+	;
+}
 
-Board::Board() :
-	m_isWhiteTurn{true},
-	m_isWhiteKingsideCastlePermitted{true},
-	m_isWhiteQueensideCastlePermitted{true},
-	m_isBlackKingsideCastlePermitted{true},
-	m_isBlackQueensideCastlePermitted{true},
-	m_enPassantSquare{ C7_MASK >> 8 }
-{
+void Board::SetUpStartPosition() {
+	m_isWhiteTurn = true;
+	m_isWhiteKingsideCastlePermitted = true;
+	m_isWhiteQueensideCastlePermitted = true;
+	m_isBlackKingsideCastlePermitted = true;
+	m_isBlackQueensideCastlePermitted = true;
+	m_enPassantSquare = 0ULL;
+
 	#define X(piece) m_pieceBitboards[Piece::piece] = GetStartingPositionBitboard<Piece::piece>();
 	PIECES_LIST
 	#undef X

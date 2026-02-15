@@ -10,7 +10,7 @@
 
 class Board {
 public:
-	Board();
+	Board() = default;
 
 	inline bool IsWhiteTurn() const { return m_isWhiteTurn; }
 
@@ -28,6 +28,9 @@ public:
 	Piece GetBlackPieceAtSquare(Bitboard bb);
 
 	inline Bitboard GetEnPassantSquare() const { return m_enPassantSquare; }
+
+	void Initialise();
+	void SetUpStartPosition();
 
 	inline void PickUp(Piece piece, Bitboard bb) { m_pieceBitboards[piece] &= ~bb; }
 	inline void PutDown(Piece piece, Bitboard bb) { m_pieceBitboards[piece] |= bb; }

@@ -10,7 +10,7 @@ class MoveGenerator {
 public:
 	MoveGenerator(const Board& board);
 
-	std::vector<Move> 	GenerateMoves();
+	std::vector<Move> 	GenerateLegalMoves();
 
 private:
 	void PrepareWhiteMoveGeneration();

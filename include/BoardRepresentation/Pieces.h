@@ -67,7 +67,7 @@ constexpr inline bool IsBlack(Piece p) { return Piece::BLACK_PAWN <= p && p <= P
 template<Piece P>
 constexpr Bitboard GetStartingPositionBitboard();
 template<>
-constexpr Bitboard GetStartingPositionBitboard<Piece::WHITE_PAWN>() { return RANK_2_MASK | (D7_MASK >> 16); }
+constexpr Bitboard GetStartingPositionBitboard<Piece::WHITE_PAWN>() { return RANK_2_MASK; }
 template<>
 constexpr Bitboard GetStartingPositionBitboard<Piece::WHITE_KNIGHT>() { return B1_MASK | G1_MASK; }
 template<>
@@ -79,7 +79,7 @@ constexpr Bitboard GetStartingPositionBitboard<Piece::WHITE_QUEEN>() { return D1
 template<>
 constexpr Bitboard GetStartingPositionBitboard<Piece::WHITE_KING>() { return E1_MASK; }
 template<>
-constexpr Bitboard GetStartingPositionBitboard<Piece::BLACK_PAWN>() { return RANK_7_MASK | (C7_MASK >> 16); }
+constexpr Bitboard GetStartingPositionBitboard<Piece::BLACK_PAWN>() { return RANK_7_MASK; }
 template<>
 constexpr Bitboard GetStartingPositionBitboard<Piece::BLACK_KNIGHT>() { return B8_MASK | G8_MASK; }
 template<>

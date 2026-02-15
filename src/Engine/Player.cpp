@@ -8,7 +8,7 @@ Player::Player(Board& board) :
 }
 
 Move Player::GetMove() {
-	std::vector<Move> moves = m_moveGenerator.GenerateMoves();
+	std::vector<Move> moves = m_moveGenerator.GenerateLegalMoves();
 
 	for (const Move& m : moves) {
 		std::cout << m;

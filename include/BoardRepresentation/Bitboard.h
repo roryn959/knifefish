@@ -1,9 +1,6 @@
 #pragma once
 
-#include <cassert>
-
 #include "Square.h"
-
 
 constexpr uint64_t A1_MASK { 0x0000000000000080ULL };
 constexpr uint64_t B1_MASK { A1_MASK >> 1 };
@@ -76,11 +73,9 @@ public:
 	constexpr Bitboard() = default;
 	constexpr Bitboard(uint64_t board) noexcept : m_board{board} {};
 
-	constexpr inline uint64_t GetBoard() { return m_board; }
+	constexpr inline uint64_t GetBoard() const { return m_board; }
 
 	constexpr inline Bitboard PopLsb() {
-		assert(m_board != 0);
-	
 		Bitboard lsb = m_board & -m_board;
 		m_board &= m_board - 1;
 		return lsb;

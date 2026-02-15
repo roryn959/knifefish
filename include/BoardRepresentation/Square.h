@@ -22,6 +22,17 @@ enum class Square : uint8_t {
 };
 #undef X
 
+inline std::string SquareToString(Square sq) {
+	switch (sq) {
+		#define X(square) case (Square::square) : { return #square; }
+		SQUARE_LIST
+		#undef X
+
+		default:
+			return "INVALID_SQUARE";
+	}
+}
+
 std::ostream& operator<<(std::ostream& os, Square sq);
 
 constexpr inline Square& operator++(Square& sq) {
