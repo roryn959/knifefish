@@ -6,7 +6,8 @@ Board::Board() :
 	m_isWhiteKingsideCastlePermitted{true},
 	m_isWhiteQueensideCastlePermitted{true},
 	m_isBlackKingsideCastlePermitted{true},
-	m_isBlackQueensideCastlePermitted{true}
+	m_isBlackQueensideCastlePermitted{true},
+	m_enPassantSquare{ C7_MASK >> 8 }
 {
 	#define X(piece) m_pieceBitboards[Piece::piece] = GetStartingPositionBitboard<Piece::piece>();
 	PIECES_LIST
@@ -39,17 +40,17 @@ Bitboard Board::GetBlackPieceBitboard() const {
 
 Piece Board::GetWhitePieceAtSquare(Bitboard bb) {
 	Piece piece;
-	if (!(bb & m_pieceBitboards[Piece::WHITE_PAWN]).IsEmpty())
+	if (bb & m_pieceBitboards[Piece::WHITE_PAWN])
 		piece = Piece::WHITE_PAWN;
-	else if (!(bb & m_pieceBitboards[Piece::WHITE_KNIGHT]).IsEmpty())
+	else if (bb & m_pieceBitboards[Piece::WHITE_KNIGHT])
 		piece = Piece::WHITE_KNIGHT;
-	else if (!(bb & m_pieceBitboards[Piece::WHITE_BISHOP]).IsEmpty())
+	else if (bb & m_pieceBitboards[Piece::WHITE_BISHOP])
 		piece = Piece::WHITE_BISHOP;
-	else if (!(bb & m_pieceBitboards[Piece::WHITE_ROOK]).IsEmpty())
+	else if (bb & m_pieceBitboards[Piece::WHITE_ROOK])
 		piece = Piece::WHITE_ROOK;
-	else if (!(bb & m_pieceBitboards[Piece::WHITE_QUEEN]).IsEmpty())
+	else if (bb & m_pieceBitboards[Piece::WHITE_QUEEN])
 		piece = Piece::WHITE_QUEEN;
-	else if (!(bb & m_pieceBitboards[Piece::WHITE_KING]).IsEmpty())
+	else if (bb & m_pieceBitboards[Piece::WHITE_KING])
 		piece = Piece::WHITE_KING;
 	else
 		piece = Piece::EMPTY;
@@ -58,17 +59,17 @@ Piece Board::GetWhitePieceAtSquare(Bitboard bb) {
 
 Piece Board::GetBlackPieceAtSquare(Bitboard bb) {
 	Piece piece;
-	if (!(bb & m_pieceBitboards[Piece::BLACK_PAWN]).IsEmpty())
+	if (bb & m_pieceBitboards[Piece::BLACK_PAWN])
 		piece = Piece::BLACK_PAWN;
-	else if (!(bb & m_pieceBitboards[Piece::BLACK_KNIGHT]).IsEmpty())
+	else if (bb & m_pieceBitboards[Piece::BLACK_KNIGHT])
 		piece = Piece::BLACK_KNIGHT;
-	else if (!(bb & m_pieceBitboards[Piece::BLACK_BISHOP]).IsEmpty())
+	else if (bb & m_pieceBitboards[Piece::BLACK_BISHOP])
 		piece = Piece::BLACK_BISHOP;
-	else if (!(bb & m_pieceBitboards[Piece::BLACK_ROOK]).IsEmpty())
+	else if (bb & m_pieceBitboards[Piece::BLACK_ROOK])
 		piece = Piece::BLACK_ROOK;
-	else if (!(bb & m_pieceBitboards[Piece::BLACK_QUEEN]).IsEmpty())
+	else if (bb & m_pieceBitboards[Piece::BLACK_QUEEN])
 		piece = Piece::BLACK_QUEEN;
-	else if (!(bb & m_pieceBitboards[Piece::BLACK_KING]).IsEmpty())
+	else if (bb & m_pieceBitboards[Piece::BLACK_KING])
 		piece = Piece::BLACK_KING;
 	else
 		piece = Piece::EMPTY;
@@ -93,10 +94,16 @@ Undo Board::MakeMove(const Move& move) {
 		MakeSimpleMove(move);
 	}
 
+	m_enPassantSquare = 0LL;
+
 	if (move.m_isCapture) {
-		Piece piece = (m_isWhiteTurn) ? GetBlackPieceAtSquare(move.m_to) : GetWhitePieceAtSquare(move.m_to);
+		Piece piece = m_isWhiteTurn ? GetBlackPieceAtSquare(move.m_to) : GetWhitePieceAtSquare(move.m_to);
 		PickUp(piece, move.m_to);
 		undo.m_capturedPiece = piece;
+	} else if (move.m_isEnPassant) {
+		m_isWhiteTurn ? PickUp(Piece::BLACK_PAWN, move.m_to.ShiftSouth()) : PickUp(Piece::WHITE_PAWN, move.m_to.ShiftNorth());
+	} else if (move.m_isDoublePawnPush) {
+		m_enPassantSquare = m_isWhiteTurn ? move.m_from.ShiftNorth() : move.m_from.ShiftSouth();
 	}
 
 	// Turn off castling permissions if applicable here!
@@ -147,12 +154,11 @@ void Board::MakeSimpleMove(const Move& move) {
 }
 
 void Board::UndoMove(const Move& move, const Undo& undo) {
+	m_enPassantSquare = undo.m_enPassantSquare;
 	m_isWhiteKingsideCastlePermitted = undo.m_isWhiteKingsideCastlePermitted;
 	m_isWhiteQueensideCastlePermitted = undo.m_isWhiteQueensideCastlePermitted;
 	m_isBlackKingsideCastlePermitted = undo.m_isBlackKingsideCastlePermitted;
 	m_isBlackQueensideCastlePermitted = undo.m_isBlackQueensideCastlePermitted;
-	
-	m_enPassantSquare = undo.m_enPassantSquare;
 
 	if (move.m_isCastle) {
 		UndoCastleMove(move);
@@ -164,6 +170,8 @@ void Board::UndoMove(const Move& move, const Undo& undo) {
 
 	if (move.m_isCapture) {
 		PutDown(undo.m_capturedPiece, move.m_to);
+	} else if (move.m_isEnPassant) {
+		m_isWhiteTurn ? PutDown(Piece::WHITE_PAWN, move.m_to.ShiftNorth()) : PutDown(Piece::BLACK_PAWN, move.m_to.ShiftSouth());
 	}
 
 	m_isWhiteTurn = !m_isWhiteTurn;
@@ -173,7 +181,7 @@ void Board::UndoCastleMove(const Move& move) {
 	// Remember that is it is currently white turn, that means it was black's
 	// turn when they castled, so undo black castle move
 	if (m_isWhiteTurn) {
-		bool isKingside = !(move.m_to & G8_MASK).IsEmpty();
+		Bitboard isKingside = move.m_to & G8_MASK;
 		if (isKingside) {
 			PickUp(Piece::BLACK_KING, G8_MASK);
 			PutDown(Piece::BLACK_KING, E8_MASK);
@@ -186,7 +194,7 @@ void Board::UndoCastleMove(const Move& move) {
 			PutDown(Piece::BLACK_ROOK, A8_MASK);
 		}
 	} else {
-		bool isKingside = !(move.m_to & G1_MASK).IsEmpty();
+		Bitboard isKingside = move.m_to & G1_MASK;
 		if (isKingside) {
 			PickUp(Piece::WHITE_KING, G1_MASK);
 			PutDown(Piece::WHITE_KING, E1_MASK);
@@ -224,7 +232,7 @@ std::ostream& operator<<(std::ostream& os, const Board& board) {
 
 		Bitboard bitPosition = 1ULL << i;
 
-		#define X(piece) else if (!(bitPosition & board.GetPieceBitboard(Piece::piece)).IsEmpty()) boardArray[i] = Piece::piece;
+		#define X(piece) else if (bitPosition & board.GetPieceBitboard(Piece::piece)) boardArray[i] = Piece::piece;
 		if (false) ;
 		PIECES_LIST
 		#undef X

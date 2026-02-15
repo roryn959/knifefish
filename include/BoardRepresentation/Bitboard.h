@@ -5,9 +5,56 @@
 #include "Square.h"
 
 
+constexpr uint64_t A1_MASK { 0x0000000000000080ULL };
+constexpr uint64_t B1_MASK { A1_MASK >> 1 };
+constexpr uint64_t C1_MASK { A1_MASK >> 2 };
+constexpr uint64_t D1_MASK { A1_MASK >> 3 };
+constexpr uint64_t E1_MASK { A1_MASK >> 4 };
+constexpr uint64_t F1_MASK { A1_MASK >> 5 };
+constexpr uint64_t G1_MASK { A1_MASK >> 6 };
+constexpr uint64_t H1_MASK { A1_MASK >> 7 };
+constexpr uint64_t A2_MASK { 0x0000000000008000ULL };
+constexpr uint64_t B2_MASK { A2_MASK >> 1 };
+constexpr uint64_t C2_MASK { A2_MASK >> 2 };
+constexpr uint64_t D2_MASK { A2_MASK >> 3 };
+constexpr uint64_t E2_MASK { A2_MASK >> 4 };
+constexpr uint64_t F2_MASK { A2_MASK >> 5 };
+constexpr uint64_t G2_MASK { A2_MASK >> 6 };
+constexpr uint64_t H2_MASK { A2_MASK >> 7 };
+
+constexpr uint64_t A8_MASK { 0x8000000000000000ULL };
+constexpr uint64_t B8_MASK { A8_MASK >> 1 };
+constexpr uint64_t C8_MASK { A8_MASK >> 2 };
+constexpr uint64_t D8_MASK { A8_MASK >> 3 };
+constexpr uint64_t E8_MASK { A8_MASK >> 4 };
+constexpr uint64_t F8_MASK { A8_MASK >> 5 };
+constexpr uint64_t G8_MASK { A8_MASK >> 6 };
+constexpr uint64_t H8_MASK { A8_MASK >> 7 };
+constexpr uint64_t A7_MASK { 0x0080000000000000ULL };
+constexpr uint64_t B7_MASK { A7_MASK >> 1 };
+constexpr uint64_t C7_MASK { A7_MASK >> 2 };
+constexpr uint64_t D7_MASK { A7_MASK >> 3 };
+constexpr uint64_t E7_MASK { A7_MASK >> 4 };
+constexpr uint64_t F7_MASK { A7_MASK >> 5 };
+constexpr uint64_t G7_MASK { A7_MASK >> 6 };
+constexpr uint64_t H7_MASK { A7_MASK >> 7 };
+
+constexpr uint64_t RANK_2_MASK				{ 0x000000000000FF00ULL };
+constexpr uint64_t RANK_7_MASK				{ 0x00FF000000000000ULL };
+
+constexpr uint64_t NON_FILE_A_MASK			{ 0x7F7F7F7F7F7F7F7FULL };
+constexpr uint64_t NON_FILE_A_OR_B_MASK		{ 0x3F3F3F3F3F3F3F3FULL };
+constexpr uint64_t NON_FILE_G_OR_H_MASK		{ 0xFCFCFCFCFCFCFCFCULL };
+constexpr uint64_t NON_FILE_H_MASK			{ 0xFEFEFEFEFEFEFEFEULL };
+
+constexpr uint64_t WHITE_KINGSIDE_CASTLE_SPACE_MASK		{ F1_MASK | G1_MASK };
+constexpr uint64_t WHITE_QUEENSIDE_CASTLE_SPACE_MASK	{ B1_MASK | C1_MASK | D1_MASK };
+constexpr uint64_t BLACK_KINGSIDE_CASTLE_SPACE_MASK		{ F8_MASK | G8_MASK };
+constexpr uint64_t BLACK_QUEENSIDE_CASTLE_SPACE_MASK	{ B8_MASK | C8_MASK | D8_MASK };
+
+
 class Bitboard {
 public:
-
 	class Iterator {
 	public:
 		uint64_t m_board;
@@ -27,11 +74,9 @@ public:
 	};
 
 	constexpr Bitboard() = default;
-	constexpr Bitboard(uint64_t board) : m_board{board} {};
+	constexpr Bitboard(uint64_t board) noexcept : m_board{board} {};
 
 	constexpr inline uint64_t GetBoard() { return m_board; }
-
-	constexpr inline bool IsEmpty() { return m_board == 0; }
 
 	constexpr inline Bitboard PopLsb() {
 		assert(m_board != 0);
@@ -59,7 +104,19 @@ public:
 	constexpr inline bool		operator==(const Bitboard rhs)	const	noexcept	{ return m_board == rhs.m_board; }
 	constexpr inline bool		operator!=(const Bitboard rhs)	const 	noexcept	{ return m_board != rhs.m_board; }
 
-	constexpr inline Bitboard	operator~()					const	noexcept	{ return Bitboard(~m_board); }
+	constexpr inline Bitboard	operator~()						const	noexcept	{ return Bitboard(~m_board); }
+
+	constexpr explicit operator bool() const noexcept { return static_cast<bool>(m_board); }
+
+	// Note: We should not need rank masks here because shifting should throw away invalid vertical moves anyway.
+	constexpr Bitboard ShiftNorth() 	const noexcept { return m_board << 8; }
+	constexpr Bitboard ShiftEast() 		const noexcept { return (m_board & NON_FILE_H_MASK) >> 1; }
+	constexpr Bitboard ShiftSouth() 	const noexcept { return m_board >> 8; }
+	constexpr Bitboard ShiftWest() 		const noexcept { return (m_board & NON_FILE_A_MASK) << 1; }
+	constexpr Bitboard ShiftNorthEast() const noexcept { return (m_board & NON_FILE_H_MASK) << 7; }
+	constexpr Bitboard ShiftSouthEast() const noexcept { return (m_board & NON_FILE_H_MASK) >> 9; }
+	constexpr Bitboard ShiftSouthWest() const noexcept { return (m_board & NON_FILE_A_MASK) >> 7; }
+	constexpr Bitboard ShiftNorthWest() const noexcept { return (m_board & NON_FILE_A_MASK) << 9; }
 
 	Iterator begin() const { return Iterator{m_board}; }
 	std::nullptr_t end() const { return nullptr; }
@@ -68,50 +125,3 @@ public:
 private:
 	uint64_t m_board;
 };
-
-constexpr Bitboard A1_MASK { 0x0000000000000080ULL };
-constexpr Bitboard B1_MASK { A1_MASK >> 1 };
-constexpr Bitboard C1_MASK { A1_MASK >> 2 };
-constexpr Bitboard D1_MASK { A1_MASK >> 3 };
-constexpr Bitboard E1_MASK { A1_MASK >> 4 };
-constexpr Bitboard F1_MASK { A1_MASK >> 5 };
-constexpr Bitboard G1_MASK { A1_MASK >> 6 };
-constexpr Bitboard H1_MASK { A1_MASK >> 7 };
-constexpr Bitboard A2_MASK { 0x0000000000008000ULL };
-constexpr Bitboard B2_MASK { A2_MASK >> 1 };
-constexpr Bitboard C2_MASK { A2_MASK >> 2 };
-constexpr Bitboard D2_MASK { A2_MASK >> 3 };
-constexpr Bitboard E2_MASK { A2_MASK >> 4 };
-constexpr Bitboard F2_MASK { A2_MASK >> 5 };
-constexpr Bitboard G2_MASK { A2_MASK >> 6 };
-constexpr Bitboard H2_MASK { A2_MASK >> 7 };
-
-constexpr Bitboard A8_MASK { 0x8000000000000000ULL };
-constexpr Bitboard B8_MASK { A8_MASK >> 1 };
-constexpr Bitboard C8_MASK { A8_MASK >> 2 };
-constexpr Bitboard D8_MASK { A8_MASK >> 3 };
-constexpr Bitboard E8_MASK { A8_MASK >> 4 };
-constexpr Bitboard F8_MASK { A8_MASK >> 5 };
-constexpr Bitboard G8_MASK { A8_MASK >> 6 };
-constexpr Bitboard H8_MASK { A8_MASK >> 7 };
-constexpr Bitboard A7_MASK { 0x0080000000000000ULL };
-constexpr Bitboard B7_MASK { A7_MASK >> 1 };
-constexpr Bitboard C7_MASK { A7_MASK >> 2 };
-constexpr Bitboard D7_MASK { A7_MASK >> 3 };
-constexpr Bitboard E7_MASK { A7_MASK >> 4 };
-constexpr Bitboard F7_MASK { A7_MASK >> 5 };
-constexpr Bitboard G7_MASK { A7_MASK >> 6 };
-constexpr Bitboard H7_MASK { A7_MASK >> 7 };
-
-constexpr Bitboard RANK_2_MASK				{ 0x000000000000FF00ULL };
-constexpr Bitboard RANK_7_MASK				{ 0x00FF000000000000ULL };
-
-constexpr Bitboard NON_FILE_A_MASK			{ 0x7F7F7F7F7F7F7F7FULL };
-constexpr Bitboard NON_FILE_A_OR_B_MASK		{ 0x3F3F3F3F3F3F3F3FULL };
-constexpr Bitboard NON_FILE_G_OR_H_MASK		{ 0xFCFCFCFCFCFCFCFCULL };
-constexpr Bitboard NON_FILE_H_MASK			{ 0xFEFEFEFEFEFEFEFEULL };
-
-constexpr Bitboard WHITE_KINGSIDE_CASTLE_SPACE_MASK		{ F1_MASK | G1_MASK };
-constexpr Bitboard WHITE_QUEENSIDE_CASTLE_SPACE_MASK	{ B1_MASK | C1_MASK | D1_MASK };
-constexpr Bitboard BLACK_KINGSIDE_CASTLE_SPACE_MASK		{ F8_MASK | G8_MASK };
-constexpr Bitboard BLACK_QUEENSIDE_CASTLE_SPACE_MASK	{ B8_MASK | C8_MASK | D8_MASK };

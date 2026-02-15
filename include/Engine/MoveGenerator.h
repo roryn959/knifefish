@@ -13,16 +13,6 @@ public:
 	std::vector<Move> 	GenerateMoves();
 
 private:
-	// Note: We should not need rank masks here because shifting should throw away invalid vertical moves anyway.
-	constexpr inline Bitboard ShiftNorth(Bitboard bitboard) 	const noexcept { return bitboard <<= 8; }
-	constexpr inline Bitboard ShiftEast(Bitboard bitboard) 		const noexcept { bitboard &= NON_FILE_H_MASK; return bitboard >>= 1; }
-	constexpr inline Bitboard ShiftSouth(Bitboard bitboard) 	const noexcept { return bitboard >>= 8; }
-	constexpr inline Bitboard ShiftWest(Bitboard bitboard) 		const noexcept { bitboard &= NON_FILE_A_MASK; return bitboard <<= 1; }
-	constexpr inline Bitboard ShiftNorthEast(Bitboard bitboard) const noexcept { bitboard &= NON_FILE_H_MASK; return bitboard <<= 7; }
-	constexpr inline Bitboard ShiftSouthEast(Bitboard bitboard) const noexcept { bitboard &= NON_FILE_H_MASK; return bitboard >>= 9; }
-	constexpr inline Bitboard ShiftSouthWest(Bitboard bitboard) const noexcept { bitboard &= NON_FILE_A_MASK; return bitboard >>= 7; }
-	constexpr inline Bitboard ShiftNorthWest(Bitboard bitboard) const noexcept { bitboard &= NON_FILE_A_MASK; return bitboard <<= 9; }
-
 	void PrepareWhiteMoveGeneration();
 	void PrepareBlackMoveGeneration();
 
