@@ -19,6 +19,9 @@ public:
 	inline bool IsBlackKingsideCastlePermitted() 	const { return m_isBlackKingsideCastlePermitted; }
 	inline bool IsBlackQueensideCastlePermitted() 	const { return m_isBlackQueensideCastlePermitted; }
 
+	bool IsAttackedByWhite(Bitboard squares) const;
+	bool IsAttackedByBlack(Bitboard squares) const;
+
 	inline Bitboard GetPieceBitboard(Piece p) const { return m_pieceBitboards[p]; }
 	Bitboard GetAllPieceBitboard() const;
 	Bitboard GetWhitePieceBitboard() const;
@@ -28,6 +31,9 @@ public:
 	Piece GetBlackPieceAtSquare(Bitboard bb);
 
 	inline Bitboard GetEnPassantSquare() const { return m_enPassantSquare; }
+
+	Bitboard GetWhiteAttackSet() const;
+	Bitboard GetBlackAttackSet() const;
 
 	void Initialise();
 	void SetUpStartPosition();
@@ -48,6 +54,14 @@ public:
 	friend std::ostream& operator<<(std::ostream& os, const Board& board);
 
 private:
+
+	Bitboard GetPawnAttackSet(Bitboard emptySquares, Bitboard pawns) const;
+	Bitboard GetKnightAttackSet(Bitboard emptySquares, Bitboard knighs) const;
+	Bitboard GetBishopAttackSet(Bitboard emptySquares, Bitboard bishops) const;
+	Bitboard GetRookAttackSet(Bitboard emptySquares, Bitboard rooks) const;
+	Bitboard GetQueenAttackSet(Bitboard emptySquares, Bitboard queens) const;
+	Bitboard GetKingAttackSet(Bitboard emptySquares, Bitboard king) const;
+
 	Bitboard m_pieceBitboards[Piece::NUM_PIECES];
 
 	bool m_isWhiteTurn;

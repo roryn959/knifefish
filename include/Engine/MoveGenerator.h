@@ -8,21 +8,16 @@
 
 class MoveGenerator {
 public:
-	MoveGenerator(const Board& board);
+	MoveGenerator(Board& board);
 
-	std::vector<Move> 	GenerateLegalMoves();
+	std::vector<Move> GenerateLegalMoves();
 
 private:
+	std::vector<Move> FilterOutIllegalWhiteMoves(std::vector<Move>& moves);
+	std::vector<Move> FilterOutIllegalBlackMoves(std::vector<Move>& moves);
+
 	void PrepareWhiteMoveGeneration();
 	void PrepareBlackMoveGeneration();
-
-	void GenerateAttackSet();
-	void GeneratePawnAttackSet();
-	void GenerateKnightAttackSet();
-	void GenerateBishopAttackSet();
-	void GenerateRookAttackSet();
-	void GenerateQueenAttackSet();
-	void GenerateKingAttackSet();
 
 	std::vector<Move> GeneratePseudoMoves();
 
@@ -63,7 +58,7 @@ private:
 	void GenerateWhiteCastleMoves(std::vector<Move>& moves);
 	void GenerateBlackCastleMoves(std::vector<Move>& moves);
 
-	const Board& m_board;
+	Board& m_board;
 
 	Bitboard m_friendlyPieces;
 	Bitboard m_enemyPieces;
@@ -71,7 +66,7 @@ private:
 	Bitboard m_occupiedSquares;
 	Bitboard m_emptySquares;
 
-	Bitboard m_attackSet;
+	Bitboard m_enemyAttackSet;
 
 	Bitboard m_pawns;
 	Bitboard m_knights;

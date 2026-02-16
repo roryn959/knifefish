@@ -29,7 +29,7 @@ void Interface::ListenForConnection() {
 
 void Interface::ListenForCommands() {
 	while (true) {
-		std::cerr << m_board;
+		//std::cerr << m_board;
 
 		std::string input;
 		std::getline(std::cin, input);
@@ -106,15 +106,24 @@ bool Interface::SetUpPosition(std::vector<std::string>& words) {
 		std::string& sRequestedMove = words.at(i);
 		std::vector<Move> legalMoves = m_moveGenerator.GenerateLegalMoves();
 
+		bool foundMove = false;
 		for (const Move& move : legalMoves) {
 			std::string sMove = move.ToString();
 			if (sRequestedMove == sMove) {
 				std::cerr << "Log: Making move " << sMove << '\n';
 				m_board.MakeMove(move);
+				foundMove = true;
 				break;
 			}
 		}
+
+		if (!foundMove) {
+			std::cerr << "Log: Unexpected move {" << sRequestedMove << "}\n";
+			return false;
+		}
 	}
+
+	std::cerr << m_board;
 
 	return true;
 }

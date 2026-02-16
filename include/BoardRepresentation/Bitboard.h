@@ -1,6 +1,9 @@
 #pragma once
 
+#include <iostream>
+
 #include "Square.h"
+
 
 constexpr uint64_t A1_MASK { 0x0000000000000080ULL };
 constexpr uint64_t B1_MASK { A1_MASK >> 1 };
@@ -48,6 +51,11 @@ constexpr uint64_t WHITE_KINGSIDE_CASTLE_SPACE_MASK		{ F1_MASK | G1_MASK };
 constexpr uint64_t WHITE_QUEENSIDE_CASTLE_SPACE_MASK	{ B1_MASK | C1_MASK | D1_MASK };
 constexpr uint64_t BLACK_KINGSIDE_CASTLE_SPACE_MASK		{ F8_MASK | G8_MASK };
 constexpr uint64_t BLACK_QUEENSIDE_CASTLE_SPACE_MASK	{ B8_MASK | C8_MASK | D8_MASK };
+
+constexpr uint64_t WHITE_KINGSIDE_CASTLE_CHECKS_MASK	{ E1_MASK | F1_MASK | G1_MASK };
+constexpr uint64_t WHITE_QUEENSIDE_CASTLE_CHECKS_MASK	{ C1_MASK | D1_MASK | E1_MASK };
+constexpr uint64_t BLACK_KINGSIDE_CASTLE_CHECKS_MASK	{ E8_MASK | F8_MASK | G8_MASK };
+constexpr uint64_t BLACK_QUEENSIDE_CASTLE_CHECKS_MASK	{ C8_MASK | D8_MASK | E8_MASK };
 
 
 class Bitboard {
@@ -101,7 +109,8 @@ public:
 
 	constexpr inline Bitboard	operator~()						const	noexcept	{ return Bitboard(~m_board); }
 
-	constexpr explicit operator bool() const noexcept { return static_cast<bool>(m_board); }
+	constexpr inline bool		Any() const noexcept { return m_board != 0; }
+	constexpr inline bool		Empty() const noexcept { return m_board == 0; }
 
 	// Note: We should not need rank masks here because shifting should throw away invalid vertical moves anyway.
 	constexpr Bitboard ShiftNorth() 	const noexcept { return m_board << 8; }
@@ -116,6 +125,7 @@ public:
 	Iterator begin() const { return Iterator{m_board}; }
 	std::nullptr_t end() const { return nullptr; }
 
+	friend std::ostream& operator<<(std::ostream& os, const Bitboard& board);
 
 private:
 	uint64_t m_board;

@@ -1,5 +1,273 @@
 #include "BoardRepresentation/Board.h"
 
+
+bool Board::IsAttackedByWhite(Bitboard square) const {
+	Bitboard whiteAttackSet = GetWhiteAttackSet();
+	return (whiteAttackSet & square).Any();
+}
+
+bool Board::IsAttackedByBlack(Bitboard square) const {
+	Bitboard blackAttackSet = GetBlackAttackSet();
+	return (blackAttackSet & square).Any();
+}
+
+Bitboard Board::GetWhiteAttackSet() const {
+	Bitboard emptySquares = ~GetAllPieceBitboard();
+
+	Bitboard pawns = m_pieceBitboards[WHITE_PAWN];
+	Bitboard knights = m_pieceBitboards[WHITE_KNIGHT];
+	Bitboard bishops = m_pieceBitboards[WHITE_BISHOP];
+	Bitboard rooks = m_pieceBitboards[WHITE_ROOK];
+	Bitboard queens = m_pieceBitboards[WHITE_QUEEN];
+	Bitboard king = m_pieceBitboards[WHITE_KING];
+
+	Bitboard attackSet = 0ULL;
+
+	attackSet |= GetPawnAttackSet(emptySquares, pawns);
+	attackSet |= GetKnightAttackSet(emptySquares, knights);
+	attackSet |= GetBishopAttackSet(emptySquares, bishops);
+	attackSet |= GetRookAttackSet(emptySquares, rooks);
+	attackSet |= GetQueenAttackSet(emptySquares, queens);
+	attackSet |= GetKingAttackSet(emptySquares, king);
+
+	return attackSet;
+}
+
+Bitboard Board::GetBlackAttackSet() const {
+	Bitboard emptySquares = ~GetAllPieceBitboard();
+
+	Bitboard pawns = m_pieceBitboards[BLACK_PAWN];
+	Bitboard knights = m_pieceBitboards[BLACK_KNIGHT];
+	Bitboard bishops = m_pieceBitboards[BLACK_BISHOP];
+	Bitboard rooks = m_pieceBitboards[BLACK_ROOK];
+	Bitboard queens = m_pieceBitboards[BLACK_QUEEN];
+	Bitboard king = m_pieceBitboards[BLACK_KING];
+
+	Bitboard attackSet = 0ULL;
+
+	attackSet |= GetPawnAttackSet(emptySquares, pawns);
+	attackSet |= GetKnightAttackSet(emptySquares, knights);
+	attackSet |= GetBishopAttackSet(emptySquares, bishops);
+	attackSet |= GetRookAttackSet(emptySquares, rooks);
+	attackSet |= GetQueenAttackSet(emptySquares, queens);
+	attackSet |= GetKingAttackSet(emptySquares, king);
+
+	return attackSet;
+}
+
+Bitboard Board::GetPawnAttackSet(Bitboard emptySquares, Bitboard pawns) const {
+	Bitboard attackSet = 0ULL;
+
+	if (pawns.Empty()) return attackSet;
+
+	if (m_isWhiteTurn) {
+		attackSet |= pawns.ShiftSouthWest();
+		attackSet |= pawns.ShiftSouthEast();
+	} else {
+		attackSet |= pawns.ShiftNorthWest();
+		attackSet |= pawns.ShiftNorthEast();
+	}
+
+	return attackSet;
+}
+
+Bitboard Board::GetKnightAttackSet(Bitboard emptySquares, Bitboard knights) const {
+	Bitboard attackSet = 0ULL;
+
+	if (knights.Empty()) return attackSet;
+
+	Bitboard north = knights.ShiftNorth();
+	attackSet |= north.ShiftNorthWest();
+	attackSet |= north.ShiftNorthEast();
+
+	Bitboard east = knights.ShiftEast();
+	attackSet |= east.ShiftNorthEast();
+	attackSet |= east.ShiftSouthEast();
+
+	Bitboard south = knights.ShiftSouth();
+	attackSet |= south.ShiftSouthEast();
+	attackSet |= south.ShiftSouthWest();
+
+	Bitboard west = knights.ShiftWest();
+	attackSet |= west.ShiftNorthWest();
+	attackSet |= west.ShiftSouthWest();
+
+	return attackSet;
+}
+
+Bitboard Board::GetBishopAttackSet(Bitboard emptySquares, Bitboard bishops) const {
+	Bitboard attackSet = 0ULL;
+
+	if (bishops.Empty()) return attackSet;
+
+	Bitboard shadows;
+
+	shadows = bishops;
+	shadows = shadows.ShiftNorthEast();
+	while (shadows.Any()) {
+		attackSet |= shadows;
+		shadows &= emptySquares;
+		shadows = shadows.ShiftNorthEast();
+	}
+
+	shadows = bishops;
+	shadows = shadows.ShiftSouthEast();
+	while (shadows.Any()) {
+		attackSet |= shadows;
+		shadows &= emptySquares;
+		shadows = shadows.ShiftSouthEast();
+	}
+
+	shadows = bishops;
+	shadows = shadows.ShiftSouthWest();
+	while (shadows.Any()) {
+		attackSet |= shadows;
+		shadows &= emptySquares;
+		shadows = shadows.ShiftSouthWest();
+	}
+
+	shadows = bishops;
+	shadows = shadows.ShiftNorthWest();
+	while (shadows.Any()) {
+		attackSet |= shadows;
+		shadows &= emptySquares;
+		shadows = shadows.ShiftNorthWest();
+	}
+
+	return attackSet;
+}
+
+Bitboard Board::GetRookAttackSet(Bitboard emptySquares, Bitboard rooks) const {
+	Bitboard attackSet = 0ULL;
+
+	if (rooks.Empty()) return attackSet;
+
+	Bitboard shadows;
+	
+	shadows = rooks;
+	shadows = shadows.ShiftNorth();
+	while (shadows.Any()) {
+		attackSet |= shadows;
+		shadows &= emptySquares;
+		shadows = shadows.ShiftNorth();
+	}
+
+	shadows = rooks;
+	shadows = shadows.ShiftEast();
+	while (shadows.Any()) {
+		attackSet |= shadows;
+		shadows &= emptySquares;
+		shadows = shadows.ShiftEast();
+	}
+
+	shadows = rooks;
+	shadows = shadows.ShiftSouth();
+	while (shadows.Any()) {
+		attackSet |= shadows;
+		shadows &= emptySquares;
+		shadows = shadows.ShiftSouth();
+	}
+
+	shadows = rooks;
+	shadows = shadows.ShiftWest();
+	while (shadows.Any()) {
+		attackSet |= shadows;
+		shadows &= emptySquares;
+		shadows = shadows.ShiftWest();
+	}
+
+	return attackSet;
+}
+
+Bitboard Board::GetQueenAttackSet(Bitboard emptySquares, Bitboard queens) const {
+	Bitboard attackSet = 0ULL;
+	
+	if (queens.Empty()) return attackSet;
+
+	Bitboard shadows;
+
+	shadows = queens;
+	shadows = shadows.ShiftNorthEast();
+	while (shadows.Any()) {
+		attackSet |= shadows;
+		shadows &= emptySquares;
+		shadows = shadows.ShiftNorthEast();
+	}
+
+	shadows = queens;
+	shadows = shadows.ShiftSouthEast();
+	while (shadows.Any()) {
+		attackSet |= shadows;
+		shadows &= emptySquares;
+		shadows = shadows.ShiftSouthEast();
+	}
+
+	shadows = queens;
+	shadows = shadows.ShiftSouthWest();
+	while (shadows.Any()) {
+		attackSet |= shadows;
+		shadows &= emptySquares;
+		shadows = shadows.ShiftSouthWest();
+	}
+
+	shadows = queens;
+	shadows = shadows.ShiftNorthWest();
+	while (shadows.Any()) {
+		attackSet |= shadows;
+		shadows &= emptySquares;
+		shadows = shadows.ShiftNorthWest();
+	}
+
+	shadows = queens;
+	shadows = shadows.ShiftNorth();
+	while (shadows.Any()) {
+		attackSet |= shadows;
+		shadows &= emptySquares;
+		shadows = shadows.ShiftNorth();
+	}
+
+	shadows = queens;
+	shadows = shadows.ShiftEast();
+	while (shadows.Any()) {
+		attackSet |= shadows;
+		shadows &= emptySquares;
+		shadows = shadows.ShiftEast();
+	}
+
+	shadows = queens;
+	shadows = shadows.ShiftSouth();
+	while (shadows.Any()) {
+		attackSet |= shadows;
+		shadows &= emptySquares;
+		shadows = shadows.ShiftSouth();
+	}
+
+	shadows = queens;
+	shadows = shadows.ShiftWest();
+	while (shadows.Any()) {
+		attackSet |= shadows;
+		shadows &= emptySquares;
+		shadows = shadows.ShiftWest();
+	}
+
+	return attackSet;
+}
+
+Bitboard Board::GetKingAttackSet(Bitboard emptySquares, Bitboard king) const {
+	Bitboard attackSet = 0ULL;
+
+	attackSet |= king.ShiftNorth();
+	attackSet |= king.ShiftNorthEast();
+	attackSet |= king.ShiftEast();
+	attackSet |= king.ShiftSouthEast();
+	attackSet |= king.ShiftSouth();
+	attackSet |= king.ShiftSouthWest();
+	attackSet |= king.ShiftWest();
+	attackSet |= king.ShiftNorthWest();
+
+	return attackSet;
+}
+
 void Board::Initialise() {
 	// Eventually will do things like set up tables and stuff
 	;
@@ -20,41 +288,47 @@ void Board::SetUpStartPosition() {
 
 Bitboard Board::GetAllPieceBitboard() const {
 	Bitboard allPieces{0ULL};
-	
-	#define X(piece) | m_pieceBitboards[Piece::piece]
-	return allPieces PIECES_LIST;
+
+	#define X(piece) allPieces |= m_pieceBitboards[Piece::piece];
+	PIECES_LIST
 	#undef X
+
+	return allPieces;
 }
 
 Bitboard Board::GetWhitePieceBitboard() const {
 	Bitboard whitePieces{0ULL};
 
-	#define X(piece) | m_pieceBitboards[Piece::piece]
-	return whitePieces WHITE_PIECES_LIST;
+	#define X(piece) whitePieces |= m_pieceBitboards[Piece::piece];
+	WHITE_PIECES_LIST;
 	#undef X
+
+	return whitePieces;
 }
 
 Bitboard Board::GetBlackPieceBitboard() const {
 	Bitboard blackPieces{0ULL};
 
-	#define X(piece) | m_pieceBitboards[Piece::piece]
-	return blackPieces BLACK_PIECES_LIST;
+	#define X(piece) blackPieces |= m_pieceBitboards[Piece::piece];
+	BLACK_PIECES_LIST;
 	#undef X
+
+	return blackPieces;
 }
 
 Piece Board::GetWhitePieceAtSquare(Bitboard bb) {
 	Piece piece;
-	if (bb & m_pieceBitboards[Piece::WHITE_PAWN])
+	if ((bb & m_pieceBitboards[Piece::WHITE_PAWN]).Any())
 		piece = Piece::WHITE_PAWN;
-	else if (bb & m_pieceBitboards[Piece::WHITE_KNIGHT])
+	else if ((bb & m_pieceBitboards[Piece::WHITE_KNIGHT]).Any())
 		piece = Piece::WHITE_KNIGHT;
-	else if (bb & m_pieceBitboards[Piece::WHITE_BISHOP])
+	else if ((bb & m_pieceBitboards[Piece::WHITE_BISHOP]).Any())
 		piece = Piece::WHITE_BISHOP;
-	else if (bb & m_pieceBitboards[Piece::WHITE_ROOK])
+	else if ((bb & m_pieceBitboards[Piece::WHITE_ROOK]).Any())
 		piece = Piece::WHITE_ROOK;
-	else if (bb & m_pieceBitboards[Piece::WHITE_QUEEN])
+	else if ((bb & m_pieceBitboards[Piece::WHITE_QUEEN]).Any())
 		piece = Piece::WHITE_QUEEN;
-	else if (bb & m_pieceBitboards[Piece::WHITE_KING])
+	else if ((bb & m_pieceBitboards[Piece::WHITE_KING]).Any())
 		piece = Piece::WHITE_KING;
 	else
 		piece = Piece::EMPTY;
@@ -63,17 +337,17 @@ Piece Board::GetWhitePieceAtSquare(Bitboard bb) {
 
 Piece Board::GetBlackPieceAtSquare(Bitboard bb) {
 	Piece piece;
-	if (bb & m_pieceBitboards[Piece::BLACK_PAWN])
+	if ((bb & m_pieceBitboards[Piece::BLACK_PAWN]).Any())
 		piece = Piece::BLACK_PAWN;
-	else if (bb & m_pieceBitboards[Piece::BLACK_KNIGHT])
+	else if ((bb & m_pieceBitboards[Piece::BLACK_KNIGHT]).Any())
 		piece = Piece::BLACK_KNIGHT;
-	else if (bb & m_pieceBitboards[Piece::BLACK_BISHOP])
+	else if ((bb & m_pieceBitboards[Piece::BLACK_BISHOP]).Any())
 		piece = Piece::BLACK_BISHOP;
-	else if (bb & m_pieceBitboards[Piece::BLACK_ROOK])
+	else if ((bb & m_pieceBitboards[Piece::BLACK_ROOK]).Any())
 		piece = Piece::BLACK_ROOK;
-	else if (bb & m_pieceBitboards[Piece::BLACK_QUEEN])
+	else if ((bb & m_pieceBitboards[Piece::BLACK_QUEEN]).Any())
 		piece = Piece::BLACK_QUEEN;
-	else if (bb & m_pieceBitboards[Piece::BLACK_KING])
+	else if ((bb & m_pieceBitboards[Piece::BLACK_KING]).Any())
 		piece = Piece::BLACK_KING;
 	else
 		piece = Piece::EMPTY;
@@ -185,7 +459,7 @@ void Board::UndoCastleMove(const Move& move) {
 	// Remember that is it is currently white turn, that means it was black's
 	// turn when they castled, so undo black castle move
 	if (m_isWhiteTurn) {
-		Bitboard isKingside = move.m_to & G8_MASK;
+		bool isKingside = (move.m_to & G8_MASK).Any();
 		if (isKingside) {
 			PickUp(Piece::BLACK_KING, G8_MASK);
 			PutDown(Piece::BLACK_KING, E8_MASK);
@@ -198,7 +472,7 @@ void Board::UndoCastleMove(const Move& move) {
 			PutDown(Piece::BLACK_ROOK, A8_MASK);
 		}
 	} else {
-		Bitboard isKingside = move.m_to & G1_MASK;
+		bool isKingside = (move.m_to & G1_MASK).Any();
 		if (isKingside) {
 			PickUp(Piece::WHITE_KING, G1_MASK);
 			PutDown(Piece::WHITE_KING, E1_MASK);
@@ -236,7 +510,7 @@ std::ostream& operator<<(std::ostream& os, const Board& board) {
 
 		Bitboard bitPosition = 1ULL << i;
 
-		#define X(piece) else if (bitPosition & board.GetPieceBitboard(Piece::piece)) boardArray[i] = Piece::piece;
+		#define X(piece) else if ((bitPosition & board.GetPieceBitboard(Piece::piece)).Any()) boardArray[i] = Piece::piece;
 		if (false) ;
 		PIECES_LIST
 		#undef X
