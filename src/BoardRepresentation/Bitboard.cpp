@@ -1,36 +1,5 @@
 #include "BoardRepresentation/Bitboard.h"
 
-	// // The below can probably be cut, but might be useful for checking why move generation
-	// // is not working, so keeping around until I have perft going! Will need to covert to board scope if used.
-
-	// // ----------
-
-	// std::cout << '\n';
-
-	// char boardArray[64];
-	// for (int i = 0; i < 64; ++i) {
-	// 	Bitboard bitPosition = 1ULL << i;
-
-	// 	if ((whitePawns & bitPosition).Any()) 
-	// 		boardArray[i] = 'X';
-	// 	else
-	// 		boardArray[i] = 'O';
-	// }
-
-	// int col = 0;
-	// for (int i = 63; i >= 0; --i) {
-
-	// 	std::cout << boardArray[i] << ' ';
-
-	// 	if (++col == 8) {
-	// 		std::cout << '\n';
-	// 		col = 0;
-	// 	}
-	// }
-
-	// std::cout << '\n';
-
-	// // ----------
 
 std::ostream& operator<<(std::ostream& os, const Bitboard& board) {
 	char boardArray[64];
