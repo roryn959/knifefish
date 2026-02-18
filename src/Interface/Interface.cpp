@@ -71,8 +71,6 @@ void Interface::ListenForCommands() {
 		while (getline(ss, word, ' '))
 			words.push_back(word);
 
-		std::cerr << "Number of words: " << words.size() << '\n';
-
 		if (words.at(0) == "position") {
 			if (!SetUpPosition(words))
 				std::cerr << "Log: Position setup failed\n";
@@ -95,14 +93,18 @@ bool Interface::SetUpPosition(std::vector<std::string>& words) {
 		return false;
 	} else if (words.at(1) == "startpos") {
 		m_board.SetUpStartPosition();
+		if (words.size() <=2)
+			return true;
 	} else {
 		std::cerr << "Log: Invalid followup to position\n";
 		return false;
 	}
 
-	if (words.size() < 2) return true;
+	if (words.at(2) != "moves") {
+		return false;
+	}
 
-	for (int i = 2; i < words.size(); ++i) {
+	for (int i = 3; i < words.size(); ++i) {
 		std::string& sRequestedMove = words.at(i);
 		std::vector<Move> legalMoves = m_moveGenerator.GenerateLegalMoves();
 
@@ -130,7 +132,8 @@ bool Interface::SetUpPosition(std::vector<std::string>& words) {
 
 bool Interface::Go(std::vector<std::string>& words) {
 	if (words.at(1) == "depth") {
-		const Move& move = m_player.GetMove();
+		int depth = std::stoi(words.at(2));
+		const Move& move = m_player.GoDepth(depth);
 		std::cout << "bestmove " << move.ToString() << '\n';
 		return true;
 	} else {

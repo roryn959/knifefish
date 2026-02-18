@@ -16,7 +16,7 @@ std::ostream& operator<<(std::ostream& os, const Bitboard& board) {
 	for (int i = 63; i >= 0; --i) {
 		os << boardArray[i] << ' ';
 		if (++col == 8) {
-			std::cout << '\n';
+			std::cerr << '\n';
 			col = 0;
 		}
 	}
