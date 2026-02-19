@@ -55,12 +55,13 @@ public:
 
 private:
 
-	Bitboard GetPawnAttackSet(Bitboard emptySquares, Bitboard pawns) const;
-	Bitboard GetKnightAttackSet(Bitboard emptySquares, Bitboard knighs) const;
+	Bitboard GetWhitePawnAttackSet(Bitboard pawns) const;
+	Bitboard GetBlackPawnAttackSet(Bitboard pawns) const;
+	Bitboard GetKnightAttackSet(Bitboard knights) const;
 	Bitboard GetBishopAttackSet(Bitboard emptySquares, Bitboard bishops) const;
 	Bitboard GetRookAttackSet(Bitboard emptySquares, Bitboard rooks) const;
 	Bitboard GetQueenAttackSet(Bitboard emptySquares, Bitboard queens) const;
-	Bitboard GetKingAttackSet(Bitboard emptySquares, Bitboard king) const;
+	Bitboard GetKingAttackSet(Bitboard king) const;
 
 	Bitboard m_pieceBitboards[Piece::NUM_PIECES];
 

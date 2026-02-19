@@ -89,6 +89,18 @@ public:
 		return lsb;
 	}
 
+	constexpr inline int PopCount() {
+		Bitboard bb = m_board;
+		
+		int count = 0;
+		while (bb.Any()) {
+			bb.PopLsb();
+			++count;
+		}
+
+		return count;
+	}
+
 	constexpr inline Bitboard& 	operator<<=(int s) 						noexcept	{ m_board <<= s; return *this; }
 	constexpr inline Bitboard	operator<<(int s)				const	noexcept	{ Bitboard tmp = *this; return tmp <<= s; }
 

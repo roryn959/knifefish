@@ -50,7 +50,7 @@ Move Player::RootNegamax(int depth) {
 #endif
 
 	int colour = m_board.IsWhiteTurn() ? 1 : -1;
-	int bestScore = INT_MIN;
+	int bestScore = -4200;
 	Move bestMove;
 	std::vector<Move> moves = m_moveGenerator.GenerateLegalMoves();	
 
@@ -72,16 +72,16 @@ int Player::Negamax(int depth, int colour) {
 #if DEBUG
 	++m_nodesSearched;
 #endif
-
 	std::vector<Move> moves = m_moveGenerator.GenerateLegalMoves();
+
 	if (moves.size() == 0) {
 		if (colour == 1) {
 			if (m_board.IsAttackedByBlack(m_board.GetPieceBitboard(Piece::WHITE_KING))) 
-				return INT_MIN;
+				return -10420;
 			return 0;
 		} else {
 			if (m_board.IsAttackedByWhite(m_board.GetPieceBitboard(Piece::BLACK_KING))) 
-				return INT_MAX;
+				return -1069;
 			return 0;
 		}
 	}
@@ -89,7 +89,7 @@ int Player::Negamax(int depth, int colour) {
 	if (depth == 0)
 		return colour * Evaluate();
 
-	int bestScore = INT_MIN;
+	int bestScore = -6900;
 
 	for (const Move& move : moves) {
 		Undo undo = m_board.MakeMove(move);

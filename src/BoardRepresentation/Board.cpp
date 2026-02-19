@@ -1,5 +1,6 @@
 #include "BoardRepresentation/Board.h"
 
+#include <cassert>
 
 bool Board::IsAttackedByWhite(Bitboard square) const {
 	Bitboard whiteAttackSet = GetWhiteAttackSet();
@@ -23,12 +24,12 @@ Bitboard Board::GetWhiteAttackSet() const {
 
 	Bitboard attackSet = 0ULL;
 
-	attackSet |= GetPawnAttackSet(emptySquares, pawns);
-	attackSet |= GetKnightAttackSet(emptySquares, knights);
+	attackSet |= GetWhitePawnAttackSet(pawns);
+	attackSet |= GetKnightAttackSet(knights);
 	attackSet |= GetBishopAttackSet(emptySquares, bishops);
 	attackSet |= GetRookAttackSet(emptySquares, rooks);
 	attackSet |= GetQueenAttackSet(emptySquares, queens);
-	attackSet |= GetKingAttackSet(emptySquares, king);
+	attackSet |= GetKingAttackSet(king);
 
 	return attackSet;
 }
@@ -45,33 +46,39 @@ Bitboard Board::GetBlackAttackSet() const {
 
 	Bitboard attackSet = 0ULL;
 
-	attackSet |= GetPawnAttackSet(emptySquares, pawns);
-	attackSet |= GetKnightAttackSet(emptySquares, knights);
+	attackSet |= GetBlackPawnAttackSet(pawns);
+	attackSet |= GetKnightAttackSet(knights);
 	attackSet |= GetBishopAttackSet(emptySquares, bishops);
 	attackSet |= GetRookAttackSet(emptySquares, rooks);
 	attackSet |= GetQueenAttackSet(emptySquares, queens);
-	attackSet |= GetKingAttackSet(emptySquares, king);
+	attackSet |= GetKingAttackSet(king);
 
 	return attackSet;
 }
 
-Bitboard Board::GetPawnAttackSet(Bitboard emptySquares, Bitboard pawns) const {
+Bitboard Board::GetWhitePawnAttackSet(Bitboard pawns) const {
 	Bitboard attackSet = 0ULL;
 
 	if (pawns.Empty()) return attackSet;
 
-	if (m_isWhiteTurn) {
-		attackSet |= pawns.ShiftSouthWest();
-		attackSet |= pawns.ShiftSouthEast();
-	} else {
-		attackSet |= pawns.ShiftNorthWest();
-		attackSet |= pawns.ShiftNorthEast();
-	}
+	attackSet |= pawns.ShiftNorthWest();
+	attackSet |= pawns.ShiftNorthEast();
 
 	return attackSet;
 }
 
-Bitboard Board::GetKnightAttackSet(Bitboard emptySquares, Bitboard knights) const {
+Bitboard Board::GetBlackPawnAttackSet(Bitboard pawns) const {
+	Bitboard attackSet = 0ULL;
+
+	if (pawns.Empty()) return attackSet;
+
+	attackSet |= pawns.ShiftSouthWest();
+	attackSet |= pawns.ShiftSouthEast();
+
+	return attackSet;
+}
+
+Bitboard Board::GetKnightAttackSet(Bitboard knights) const {
 	Bitboard attackSet = 0ULL;
 
 	if (knights.Empty()) return attackSet;
@@ -253,7 +260,7 @@ Bitboard Board::GetQueenAttackSet(Bitboard emptySquares, Bitboard queens) const 
 	return attackSet;
 }
 
-Bitboard Board::GetKingAttackSet(Bitboard emptySquares, Bitboard king) const {
+Bitboard Board::GetKingAttackSet(Bitboard king) const {
 	Bitboard attackSet = 0ULL;
 
 	attackSet |= king.ShiftNorth();
@@ -378,6 +385,22 @@ Undo Board::MakeMove(const Move& move) {
 		Piece piece = m_isWhiteTurn ? GetBlackPieceAtSquare(move.m_to) : GetWhitePieceAtSquare(move.m_to);
 		PickUp(piece, move.m_to);
 		undo.m_capturedPiece = piece;
+
+		// Turn off castling is we just captured something affecting it
+		if (piece == Piece::WHITE_ROOK) {
+			if (move.m_to == A1_MASK) {
+				m_isWhiteKingsideCastlePermitted = false;
+			} else if (move.m_to == H1_MASK) {
+				m_isWhiteQueensideCastlePermitted = false;
+			}
+		} else if (piece == Piece::BLACK_ROOK) {
+			if (move.m_to == A8_MASK) {
+				m_isBlackKingsideCastlePermitted = false;
+			} else if (move.m_to == H8_MASK) {
+				m_isBlackQueensideCastlePermitted = false;
+			}
+		}
+	
 	} else if (move.m_isEnPassant) {
 		m_isWhiteTurn ? PickUp(Piece::BLACK_PAWN, move.m_to.ShiftSouth()) : PickUp(Piece::WHITE_PAWN, move.m_to.ShiftNorth());
 	} else if (move.m_isDoublePawnPush) {
@@ -385,8 +408,37 @@ Undo Board::MakeMove(const Move& move) {
 	}
 
 	// Turn off castling permissions if applicable here!
+	if (m_isWhiteTurn) {
+		if (m_isWhiteKingsideCastlePermitted && (move.m_from == H1_MASK || move.m_from == E1_MASK)) {
+			m_isWhiteKingsideCastlePermitted = false;
+		}
+		if (m_isWhiteQueensideCastlePermitted && (move.m_from == A1_MASK || move.m_from == E1_MASK)) {
+			m_isWhiteQueensideCastlePermitted = false;
+		}
+	} else {
+		if (m_isBlackKingsideCastlePermitted && (move.m_from == H8_MASK || move.m_from == E8_MASK)) {
+			m_isBlackKingsideCastlePermitted = false;
+		} 
+		if (m_isBlackQueensideCastlePermitted && (move.m_from == A8_MASK || move.m_from == E8_MASK)) {
+			m_isBlackQueensideCastlePermitted = false;
+		}
+	}
 
 	m_isWhiteTurn = !m_isWhiteTurn;
+
+	int whiteKingNum = m_pieceBitboards[Piece::WHITE_KING].PopCount();
+	if (whiteKingNum != 1) {
+		std::cerr << "WHITE KING ERROR -- white king count --> " << whiteKingNum << " while doing move " << move << '\n';
+		std::cerr << *this;
+		std::exit(1);
+	}
+
+	int blackKingNum = m_pieceBitboards[Piece::BLACK_KING].PopCount();
+	if (blackKingNum != 1) {
+		std::cerr << "BLACK KING ERROR -- black king count --> " << blackKingNum << " while doing move " << move << '\n';
+		std::cerr << *this;
+		std::exit(1);
+	}
 
 	return undo;
 }
@@ -453,13 +505,27 @@ void Board::UndoMove(const Move& move, const Undo& undo) {
 	}
 
 	m_isWhiteTurn = !m_isWhiteTurn;
+
+	int whiteKingNum = m_pieceBitboards[Piece::WHITE_KING].PopCount();
+	if (whiteKingNum != 1) {
+		std::cerr << "WHITE KING ERROR -- white king count --> " << whiteKingNum << " while undoing move " << move << '\n';
+		std::cerr << *this;
+		std::exit(1);
+	}
+
+	int blackKingNum = m_pieceBitboards[Piece::BLACK_KING].PopCount();
+	if (blackKingNum != 1) {
+		std::cerr << "BLACK KING ERROR -- black king count --> " << blackKingNum << " while undoing move " << move << '\n';
+		std::cerr << *this;
+		std::exit(1);
+	}
 }
 
 void Board::UndoCastleMove(const Move& move) {
 	// Remember that is it is currently white turn, that means it was black's
 	// turn when they castled, so undo black castle move
 	if (m_isWhiteTurn) {
-		bool isKingside = (move.m_to & G8_MASK).Any();
+		bool isKingside = (move.m_to == G8_MASK);
 		if (isKingside) {
 			PickUp(Piece::BLACK_KING, G8_MASK);
 			PutDown(Piece::BLACK_KING, E8_MASK);
@@ -472,17 +538,17 @@ void Board::UndoCastleMove(const Move& move) {
 			PutDown(Piece::BLACK_ROOK, A8_MASK);
 		}
 	} else {
-		bool isKingside = (move.m_to & G1_MASK).Any();
+		bool isKingside = (move.m_to == G1_MASK);
 		if (isKingside) {
 			PickUp(Piece::WHITE_KING, G1_MASK);
 			PutDown(Piece::WHITE_KING, E1_MASK);
 			PickUp(Piece::WHITE_ROOK, F1_MASK);
 			PutDown(Piece::WHITE_ROOK, H1_MASK);
 		} else {
-			PickUp(Piece::WHITE_KING, G1_MASK);
+			PickUp(Piece::WHITE_KING, C1_MASK);
 			PutDown(Piece::WHITE_KING, E1_MASK);
-			PickUp(Piece::WHITE_ROOK, F1_MASK);
-			PutDown(Piece::WHITE_ROOK, H1_MASK);
+			PickUp(Piece::WHITE_ROOK, D1_MASK);
+			PutDown(Piece::WHITE_ROOK, A1_MASK);
 		}
 	}
 }

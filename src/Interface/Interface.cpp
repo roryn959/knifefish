@@ -29,14 +29,35 @@ void Interface::ListenForConnection() {
 
 void Interface::ListenForCommands() {
 	while (true) {
-		//std::cerr << m_board;
-
 		std::string input;
 		std::getline(std::cin, input);
 
 		std::cerr << "Log: Message received {" << input << "}\n";
 
 		if (input == "") {
+			continue;
+		}
+
+		if (input == "show") {
+			std::cout << m_board;
+			continue;
+		}
+
+		if (input == "moves") {
+			std::vector<Move> moves = m_moveGenerator.GenerateLegalMoves();
+			for (const Move& m : moves) {
+				std::cout << m;
+			}
+			continue;
+		}
+
+		if (input == "blackattack") {
+			std::cout << m_board.GetBlackAttackSet();
+			continue;
+		}
+
+		if (input == "whiteattack") {
+			std::cout << m_board.GetWhiteAttackSet();
 			continue;
 		}
 
@@ -112,7 +133,6 @@ bool Interface::SetUpPosition(std::vector<std::string>& words) {
 		for (const Move& move : legalMoves) {
 			std::string sMove = move.ToString();
 			if (sRequestedMove == sMove) {
-				std::cerr << "Log: Making move " << sMove << '\n';
 				m_board.MakeMove(move);
 				foundMove = true;
 				break;
@@ -120,7 +140,7 @@ bool Interface::SetUpPosition(std::vector<std::string>& words) {
 		}
 
 		if (!foundMove) {
-			std::cerr << "Log: Unexpected move {" << sRequestedMove << "}\n";
+			std::cerr << "Log: Illegal move {" << sRequestedMove << "}\n";
 			return false;
 		}
 	}
