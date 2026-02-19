@@ -58,9 +58,9 @@ private:
 	Bitboard GetWhitePawnAttackSet(Bitboard pawns) const;
 	Bitboard GetBlackPawnAttackSet(Bitboard pawns) const;
 	Bitboard GetKnightAttackSet(Bitboard knights) const;
-	Bitboard GetBishopAttackSet(Bitboard emptySquares, Bitboard bishops) const;
-	Bitboard GetRookAttackSet(Bitboard emptySquares, Bitboard rooks) const;
-	Bitboard GetQueenAttackSet(Bitboard emptySquares, Bitboard queens) const;
+	Bitboard GetBishopAttackSet(Bitboard bishops, Bitboard emptySquares) const;
+	Bitboard GetRookAttackSet(Bitboard rooks, Bitboard emptySquares) const;
+	Bitboard GetQueenAttackSet(Bitboard queens, Bitboard emptySquares) const;
 	Bitboard GetKingAttackSet(Bitboard king) const;
 
 	Bitboard m_pieceBitboards[Piece::NUM_PIECES];

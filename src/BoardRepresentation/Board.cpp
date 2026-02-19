@@ -102,7 +102,7 @@ Bitboard Board::GetKnightAttackSet(Bitboard knights) const {
 	return attackSet;
 }
 
-Bitboard Board::GetBishopAttackSet(Bitboard emptySquares, Bitboard bishops) const {
+Bitboard Board::GetBishopAttackSet(Bitboard bishops, Bitboard emptySquares) const {
 	Bitboard attackSet = 0ULL;
 
 	if (bishops.Empty()) return attackSet;
@@ -144,7 +144,7 @@ Bitboard Board::GetBishopAttackSet(Bitboard emptySquares, Bitboard bishops) cons
 	return attackSet;
 }
 
-Bitboard Board::GetRookAttackSet(Bitboard emptySquares, Bitboard rooks) const {
+Bitboard Board::GetRookAttackSet(Bitboard rooks, Bitboard emptySquares) const {
 	Bitboard attackSet = 0ULL;
 
 	if (rooks.Empty()) return attackSet;
@@ -186,7 +186,7 @@ Bitboard Board::GetRookAttackSet(Bitboard emptySquares, Bitboard rooks) const {
 	return attackSet;
 }
 
-Bitboard Board::GetQueenAttackSet(Bitboard emptySquares, Bitboard queens) const {
+Bitboard Board::GetQueenAttackSet(Bitboard queens, Bitboard emptySquares) const {
 	Bitboard attackSet = 0ULL;
 	
 	if (queens.Empty()) return attackSet;
@@ -386,7 +386,7 @@ Undo Board::MakeMove(const Move& move) {
 		PickUp(piece, move.m_to);
 		undo.m_capturedPiece = piece;
 
-		// Turn off castling is we just captured something affecting it
+		// Turn off castling if we just captured something affecting it
 		if (piece == Piece::WHITE_ROOK) {
 			if (move.m_to == A1_MASK) {
 				m_isWhiteKingsideCastlePermitted = false;
