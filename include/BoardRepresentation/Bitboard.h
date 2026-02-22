@@ -81,15 +81,15 @@ public:
 	constexpr Bitboard() = default;
 	constexpr Bitboard(uint64_t board) noexcept : m_board{board} {};
 
-	constexpr inline uint64_t GetBoard() const { return m_board; }
+	constexpr inline uint64_t GetBoard() const noexcept { return m_board; }
 
-	constexpr inline Bitboard PopLsb() {
+	constexpr inline Bitboard PopLsb() noexcept {
 		Bitboard lsb = m_board & -m_board;
 		m_board &= m_board - 1;
 		return lsb;
 	}
 
-	constexpr inline int PopCount() {
+	constexpr inline int PopCount() const noexcept {
 		Bitboard bb = m_board;
 		
 		int count = 0;

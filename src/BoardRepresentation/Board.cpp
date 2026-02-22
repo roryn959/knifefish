@@ -2,6 +2,81 @@
 
 #include <cassert>
 
+void Board::Initialise() {
+	// Eventually will do things like set up tables and stuff
+	;
+}
+
+void Board::SetUpStartPosition() {
+	m_isWhiteTurn = true;
+
+	#define X(permission) m_castlePermissions[static_cast<size_t>(CastlePermission::permission)] = true;
+	CASTLE_PERMISSIONS_LIST
+	#undef X
+
+	m_enPassantSquare = 0ULL;
+
+	#define X(piece) m_pieceBitboards[Piece::piece] = GetStartingPositionBitboard<Piece::piece>();
+	PIECES_LIST
+	#undef X
+}
+
+
+bool Board::PickUp(Piece piece, Bitboard bb) {
+#if DEBUG
+	if (piece == Piece::EMPTY) return false;
+	if ((m_pieceBitboards[piece] & bb).Empty()) return false;
+#endif
+	m_pieceBitboards[piece] &= ~bb; 
+	return true;
+}
+
+bool Board::PutDown(Piece piece, Bitboard bb) {
+#if DEBUG
+	if (piece == Piece::EMPTY) return false;
+
+	if ((GetAllPieceBitboard() & bb).Any()) return false;
+#endif
+
+	m_pieceBitboards[piece] |= bb;
+	return true;
+}
+
+#if DEBUG
+bool Board::CheckBoardOccupancy() const {
+	Bitboard combined = 0ULL;
+
+	#define X(piece) 									\
+	Bitboard piece = m_pieceBitboards[Piece::piece]; 	\
+	if ((combined & piece).Any()) return false; 		\
+	combined |= piece;
+
+	PIECES_LIST
+	#undef X
+
+	return true;
+}
+
+inline void Board::CheckKingCount(const Move& move) const {
+	int whiteKingCount = m_pieceBitboards[Piece::WHITE_KING].PopCount();
+
+	if (whiteKingCount != 1) {
+		std::cerr << "White king count error (" << whiteKingCount << ")\n";
+		std::cerr << *this;
+		std::cerr << move;
+		std::exit(1);
+	}
+
+	int blackKingCount = m_pieceBitboards[Piece::BLACK_KING].PopCount();
+	if (blackKingCount != 1) {
+		std::cerr << "Black king count error (" << blackKingCount << ")\n";
+		std::cerr << *this;
+		std::cerr << move;
+		std::exit(1);
+	}
+}
+#endif
+
 bool Board::IsAttackedByWhite(Bitboard square) const {
 	Bitboard whiteAttackSet = GetWhiteAttackSet();
 	return (whiteAttackSet & square).Any();
@@ -26,9 +101,9 @@ Bitboard Board::GetWhiteAttackSet() const {
 
 	attackSet |= GetWhitePawnAttackSet(pawns);
 	attackSet |= GetKnightAttackSet(knights);
-	attackSet |= GetBishopAttackSet(emptySquares, bishops);
-	attackSet |= GetRookAttackSet(emptySquares, rooks);
-	attackSet |= GetQueenAttackSet(emptySquares, queens);
+	attackSet |= GetBishopAttackSet(bishops, emptySquares);
+	attackSet |= GetRookAttackSet(rooks, emptySquares);
+	attackSet |= GetQueenAttackSet(queens, emptySquares);
 	attackSet |= GetKingAttackSet(king);
 
 	return attackSet;
@@ -48,9 +123,9 @@ Bitboard Board::GetBlackAttackSet() const {
 
 	attackSet |= GetBlackPawnAttackSet(pawns);
 	attackSet |= GetKnightAttackSet(knights);
-	attackSet |= GetBishopAttackSet(emptySquares, bishops);
-	attackSet |= GetRookAttackSet(emptySquares, rooks);
-	attackSet |= GetQueenAttackSet(emptySquares, queens);
+	attackSet |= GetBishopAttackSet(bishops, emptySquares);
+	attackSet |= GetRookAttackSet(rooks, emptySquares);
+	attackSet |= GetQueenAttackSet(queens, emptySquares);
 	attackSet |= GetKingAttackSet(king);
 
 	return attackSet;
@@ -275,24 +350,6 @@ Bitboard Board::GetKingAttackSet(Bitboard king) const {
 	return attackSet;
 }
 
-void Board::Initialise() {
-	// Eventually will do things like set up tables and stuff
-	;
-}
-
-void Board::SetUpStartPosition() {
-	m_isWhiteTurn = true;
-	m_isWhiteKingsideCastlePermitted = true;
-	m_isWhiteQueensideCastlePermitted = true;
-	m_isBlackKingsideCastlePermitted = true;
-	m_isBlackQueensideCastlePermitted = true;
-	m_enPassantSquare = 0ULL;
-
-	#define X(piece) m_pieceBitboards[Piece::piece] = GetStartingPositionBitboard<Piece::piece>();
-	PIECES_LIST
-	#undef X
-}
-
 Bitboard Board::GetAllPieceBitboard() const {
 	Bitboard allPieces{0ULL};
 
@@ -362,210 +419,242 @@ Piece Board::GetBlackPieceAtSquare(Bitboard bb) {
 }
 
 Undo Board::MakeMove(const Move& move) {
-	Undo undo;
+	Undo undo {
+		Piece::EMPTY,
+		m_enPassantSquare,
+		false,
+		m_castlePermissions
+	};
 
-	undo.m_isPromotion = move.m_promotionPiece == Piece::EMPTY;
-	undo.m_enPassantSquare = m_enPassantSquare;
-	undo.m_isWhiteKingsideCastlePermitted = m_isWhiteKingsideCastlePermitted;
-	undo.m_isWhiteQueensideCastlePermitted = m_isWhiteQueensideCastlePermitted;
-	undo.m_isBlackKingsideCastlePermitted = m_isBlackKingsideCastlePermitted;
-	undo.m_isBlackQueensideCastlePermitted = m_isBlackQueensideCastlePermitted;
+	m_enPassantSquare = 0LL;
+
+	if (move.m_isCapture) {
+		DoCapture(move, undo);
+	} else if (move.m_isEnPassant) {
+		DoEnPassantCapture(move);
+	}
 
 	if (move.m_isCastle) {
 		MakeCastleMove(move);
 	} else if (move.m_promotionPiece != Piece::EMPTY) {
 		MakePromotionMove(move);
 	} else {
-		MakeSimpleMove(move);
+		MakeNormalMove(move);
 	}
 
-	m_enPassantSquare = 0LL;
+	SwitchTurn();
 
-	if (move.m_isCapture) {
-		Piece piece = m_isWhiteTurn ? GetBlackPieceAtSquare(move.m_to) : GetWhitePieceAtSquare(move.m_to);
-		PickUp(piece, move.m_to);
-		undo.m_capturedPiece = piece;
-
-		// Turn off castling if we just captured something affecting it
-		if (piece == Piece::WHITE_ROOK) {
-			if (move.m_to == A1_MASK) {
-				m_isWhiteKingsideCastlePermitted = false;
-			} else if (move.m_to == H1_MASK) {
-				m_isWhiteQueensideCastlePermitted = false;
-			}
-		} else if (piece == Piece::BLACK_ROOK) {
-			if (move.m_to == A8_MASK) {
-				m_isBlackKingsideCastlePermitted = false;
-			} else if (move.m_to == H8_MASK) {
-				m_isBlackQueensideCastlePermitted = false;
-			}
-		}
-	
-	} else if (move.m_isEnPassant) {
-		m_isWhiteTurn ? PickUp(Piece::BLACK_PAWN, move.m_to.ShiftSouth()) : PickUp(Piece::WHITE_PAWN, move.m_to.ShiftNorth());
-	} else if (move.m_isDoublePawnPush) {
-		m_enPassantSquare = m_isWhiteTurn ? move.m_from.ShiftNorth() : move.m_from.ShiftSouth();
-	}
-
-	// Turn off castling permissions if applicable here!
-	if (m_isWhiteTurn) {
-		if (m_isWhiteKingsideCastlePermitted && (move.m_from == H1_MASK || move.m_from == E1_MASK)) {
-			m_isWhiteKingsideCastlePermitted = false;
-		}
-		if (m_isWhiteQueensideCastlePermitted && (move.m_from == A1_MASK || move.m_from == E1_MASK)) {
-			m_isWhiteQueensideCastlePermitted = false;
-		}
-	} else {
-		if (m_isBlackKingsideCastlePermitted && (move.m_from == H8_MASK || move.m_from == E8_MASK)) {
-			m_isBlackKingsideCastlePermitted = false;
-		} 
-		if (m_isBlackQueensideCastlePermitted && (move.m_from == A8_MASK || move.m_from == E8_MASK)) {
-			m_isBlackQueensideCastlePermitted = false;
-		}
-	}
-
-	m_isWhiteTurn = !m_isWhiteTurn;
-
-	int whiteKingNum = m_pieceBitboards[Piece::WHITE_KING].PopCount();
-	if (whiteKingNum != 1) {
-		std::cerr << "WHITE KING ERROR -- white king count --> " << whiteKingNum << " while doing move " << move << '\n';
-		std::cerr << *this;
-		std::exit(1);
-	}
-
-	int blackKingNum = m_pieceBitboards[Piece::BLACK_KING].PopCount();
-	if (blackKingNum != 1) {
-		std::cerr << "BLACK KING ERROR -- black king count --> " << blackKingNum << " while doing move " << move << '\n';
-		std::cerr << *this;
-		std::exit(1);
-	}
+#if DEBUG
+	CheckKingCount(move);
+#endif
 
 	return undo;
+}
+
+void Board::DoCapture(const Move& move, Undo& undo) {
+	Piece piece = m_isWhiteTurn ? GetBlackPieceAtSquare(move.m_to) : GetWhitePieceAtSquare(move.m_to);
+
+	SAFE_CALL_WITH_MOVE(PickUp(piece, move.m_to));
+
+	undo.m_capturedPiece = piece;
+
+	// Turn off castling if we just captured something affecting it
+	if (piece == Piece::WHITE_ROOK) {
+		if (GetCastlePermission(CastlePermission::WHITE_QUEENSIDE) && (move.m_to == A1_MASK)) {
+			SetCastlePermission(CastlePermission::WHITE_QUEENSIDE, false);
+		} else if (GetCastlePermission(CastlePermission::WHITE_KINGSIDE) && (move.m_to == H1_MASK)) {
+			SetCastlePermission(CastlePermission::WHITE_KINGSIDE, false);
+		}
+	} else if (piece == Piece::BLACK_ROOK) {
+		if (GetCastlePermission(CastlePermission::BLACK_QUEENSIDE) && (move.m_to == A8_MASK)) {
+			SetCastlePermission(CastlePermission::BLACK_QUEENSIDE, false);
+		} else if (GetCastlePermission(CastlePermission::BLACK_KINGSIDE) && (move.m_to == H8_MASK)) {
+			SetCastlePermission(CastlePermission::BLACK_KINGSIDE, false);
+		}
+	}
+}
+
+void Board::DoEnPassantCapture(const Move& move) {
+	if (m_isWhiteTurn) {
+		SAFE_CALL_WITH_MOVE(PickUp(Piece::BLACK_PAWN, move.m_to.ShiftSouth()));
+	} else {
+		SAFE_CALL_WITH_MOVE(PickUp(Piece::WHITE_PAWN, move.m_to.ShiftNorth()));
+	}
 }
 
 void Board::MakeCastleMove(const Move& move) {
 	if (m_isWhiteTurn) {
 		bool isKingside = (move.m_to == G1_MASK);
 		if (isKingside) {
-			m_pieceBitboards[Piece::WHITE_KING] = G1_MASK;
-			PickUp(Piece::WHITE_ROOK, H1_MASK);
-			PutDown(Piece::WHITE_ROOK, F1_MASK);
+			SAFE_CALL_WITH_MOVE(PickUp(Piece::WHITE_KING, E1_MASK));
+			SAFE_CALL_WITH_MOVE(PutDown(Piece::WHITE_KING, G1_MASK));
+			SAFE_CALL_WITH_MOVE(PickUp(Piece::WHITE_ROOK, H1_MASK));
+			SAFE_CALL_WITH_MOVE(PutDown(Piece::WHITE_ROOK, F1_MASK));
 		} else {
-			m_pieceBitboards[Piece::WHITE_KING] = C1_MASK;
-			PickUp(Piece::WHITE_ROOK, A1_MASK);
-			PutDown(Piece::WHITE_ROOK, D1_MASK);
+			SAFE_CALL_WITH_MOVE(PickUp(Piece::WHITE_KING, E1_MASK));
+			SAFE_CALL_WITH_MOVE(PutDown(Piece::WHITE_KING, C1_MASK));
+			SAFE_CALL_WITH_MOVE(PickUp(Piece::WHITE_ROOK, A1_MASK));
+			SAFE_CALL_WITH_MOVE(PutDown(Piece::WHITE_ROOK, D1_MASK));
 		}
+		SetCastlePermission(CastlePermission::WHITE_KINGSIDE, false);
+		SetCastlePermission(CastlePermission::WHITE_QUEENSIDE, false);
 	} else {
 		bool isKingside = (move.m_to == G8_MASK);
 		if (isKingside) {
-			m_pieceBitboards[Piece::BLACK_KING] = G8_MASK;
-			PickUp(Piece::BLACK_ROOK, H8_MASK);
-			PutDown(Piece::BLACK_ROOK, F8_MASK);
+			SAFE_CALL_WITH_MOVE(PickUp(Piece::BLACK_KING, E8_MASK));
+			SAFE_CALL_WITH_MOVE(PutDown(Piece::BLACK_KING, G8_MASK));
+			SAFE_CALL_WITH_MOVE(PickUp(Piece::BLACK_ROOK, H8_MASK));
+			SAFE_CALL_WITH_MOVE(PutDown(Piece::BLACK_ROOK, F8_MASK));
 		} else {
-			m_pieceBitboards[Piece::BLACK_KING] = C8_MASK;
-			PickUp(Piece::BLACK_ROOK, A8_MASK);
-			PutDown(Piece::BLACK_ROOK, D8_MASK);
+			SAFE_CALL_WITH_MOVE(PickUp(Piece::BLACK_KING, E8_MASK));
+			SAFE_CALL_WITH_MOVE(PutDown(Piece::BLACK_KING, C8_MASK));
+			SAFE_CALL_WITH_MOVE(PickUp(Piece::BLACK_ROOK, A8_MASK));
+			SAFE_CALL_WITH_MOVE(PutDown(Piece::BLACK_ROOK, D8_MASK));
 		}
+		SetCastlePermission(CastlePermission::BLACK_KINGSIDE, false);
+		SetCastlePermission(CastlePermission::BLACK_QUEENSIDE, false);
+
 	}
 }
 
 void Board::MakePromotionMove(const Move& move) {
 	Piece pawn = m_isWhiteTurn ? Piece::WHITE_PAWN : Piece::BLACK_PAWN;
-
-	PickUp(pawn, move.m_from);
-	PutDown(move.m_promotionPiece, move.m_to);
+	SAFE_CALL_WITH_MOVE(PickUp(pawn, move.m_from));
+	SAFE_CALL_WITH_MOVE(PutDown(move.m_promotionPiece, move.m_to));
 }
 
-void Board::MakeSimpleMove(const Move& move) {
+void Board::MakeNormalMove(const Move& move) {
 	Piece piece = m_isWhiteTurn ? GetWhitePieceAtSquare(move.m_from) : GetBlackPieceAtSquare(move.m_from);
+	SAFE_CALL_WITH_MOVE(PickUp(piece, move.m_from));
+	SAFE_CALL_WITH_MOVE(PutDown(piece, move.m_to));
 
-	PickUp(piece, move.m_from);
-	PutDown(piece, move.m_to);
+	// Turn off castling if applicable
+	if (m_isWhiteTurn) {
+		if (GetCastlePermission(CastlePermission::WHITE_KINGSIDE) && (move.m_from == E1_MASK || move.m_from == H1_MASK)) {
+			SetCastlePermission(CastlePermission::WHITE_KINGSIDE, false);
+		}
+		if (GetCastlePermission(CastlePermission::WHITE_QUEENSIDE) && (move.m_from == E1_MASK || move.m_from == A1_MASK)) {
+			SetCastlePermission(CastlePermission::WHITE_QUEENSIDE, false);
+		}
+	} else {
+		if (GetCastlePermission(CastlePermission::BLACK_KINGSIDE) && (move.m_from == E8_MASK || move.m_from == H8_MASK)) {
+			SetCastlePermission(CastlePermission::BLACK_KINGSIDE, false);
+		}
+		if (GetCastlePermission(CastlePermission::BLACK_QUEENSIDE) && (move.m_from == E8_MASK || move.m_from == A8_MASK)) {
+			SetCastlePermission(CastlePermission::BLACK_QUEENSIDE, false);
+		}
+	}
 }
 
 void Board::UndoMove(const Move& move, const Undo& undo) {
-	m_enPassantSquare = undo.m_enPassantSquare;
-	m_isWhiteKingsideCastlePermitted = undo.m_isWhiteKingsideCastlePermitted;
-	m_isWhiteQueensideCastlePermitted = undo.m_isWhiteQueensideCastlePermitted;
-	m_isBlackKingsideCastlePermitted = undo.m_isBlackKingsideCastlePermitted;
-	m_isBlackQueensideCastlePermitted = undo.m_isBlackQueensideCastlePermitted;
+	SwitchTurn();
 
 	if (move.m_isCastle) {
 		UndoCastleMove(move);
 	} else if (move.m_promotionPiece != Piece::EMPTY) {
 		UndoPromotionMove(move, undo);
 	} else {
-		UndoSimpleMove(move, undo);
+		UndoNormalMove(move);
 	}
 
 	if (move.m_isCapture) {
-		PutDown(undo.m_capturedPiece, move.m_to);
+		UndoCapture(move, undo);
 	} else if (move.m_isEnPassant) {
-		m_isWhiteTurn ? PutDown(Piece::WHITE_PAWN, move.m_to.ShiftNorth()) : PutDown(Piece::BLACK_PAWN, move.m_to.ShiftSouth());
+		UndoEnPassantCapture(move);
 	}
 
-	m_isWhiteTurn = !m_isWhiteTurn;
+	m_enPassantSquare = undo.m_enPassantSquare;
+	m_castlePermissions = undo.m_castlePermissions;
 
-	int whiteKingNum = m_pieceBitboards[Piece::WHITE_KING].PopCount();
-	if (whiteKingNum != 1) {
-		std::cerr << "WHITE KING ERROR -- white king count --> " << whiteKingNum << " while undoing move " << move << '\n';
-		std::cerr << *this;
-		std::exit(1);
-	}
+#if DEBUG
+	CheckKingCount(move);
+#endif
+}
 
-	int blackKingNum = m_pieceBitboards[Piece::BLACK_KING].PopCount();
-	if (blackKingNum != 1) {
-		std::cerr << "BLACK KING ERROR -- black king count --> " << blackKingNum << " while undoing move " << move << '\n';
-		std::cerr << *this;
-		std::exit(1);
+void Board::UndoCapture(const Move& move, const Undo& undo) {
+	SAFE_CALL_WITH_MOVE(PutDown(undo.m_capturedPiece, move.m_to));
+}
+
+void Board::UndoEnPassantCapture(const Move& move) {
+	if (m_isWhiteTurn) {
+		SAFE_CALL_WITH_MOVE(PutDown(Piece::BLACK_PAWN, move.m_to.ShiftSouth()));
+	} else {
+		SAFE_CALL_WITH_MOVE(PutDown(Piece::WHITE_PAWN, move.m_to.ShiftNorth()));
 	}
 }
 
 void Board::UndoCastleMove(const Move& move) {
 	// Remember that is it is currently white turn, that means it was black's
 	// turn when they castled, so undo black castle move
+	// if (m_isWhiteTurn) {
+	// 	bool isKingside = (move.m_to == G8_MASK);
+	// 	if (isKingside) {
+	// 		SAFE_CALL_WITH_MOVE(PickUp(Piece::BLACK_KING, G8_MASK));
+	// 		SAFE_CALL_WITH_MOVE(PutDown(Piece::BLACK_KING, E8_MASK));
+	// 		SAFE_CALL_WITH_MOVE(PickUp(Piece::BLACK_ROOK, F8_MASK));
+	// 		SAFE_CALL_WITH_MOVE(PutDown(Piece::BLACK_ROOK, H8_MASK));
+	// 	} else {
+	// 		SAFE_CALL_WITH_MOVE(PickUp(Piece::BLACK_KING, C8_MASK));
+	// 		SAFE_CALL_WITH_MOVE(PutDown(Piece::BLACK_KING, E8_MASK));
+	// 		SAFE_CALL_WITH_MOVE(PickUp(Piece::BLACK_ROOK, D8_MASK));
+	// 		SAFE_CALL_WITH_MOVE(PutDown(Piece::BLACK_ROOK, A8_MASK));
+	// 	}
+	// } else {
+	// 	bool isKingside = (move.m_to == G1_MASK);
+	// 	if (isKingside) {
+	// 		SAFE_CALL_WITH_MOVE(PickUp(Piece::WHITE_KING, G1_MASK));
+	// 		SAFE_CALL_WITH_MOVE(PutDown(Piece::WHITE_KING, E1_MASK));
+	// 		SAFE_CALL_WITH_MOVE(PickUp(Piece::WHITE_ROOK, F1_MASK));
+	// 		SAFE_CALL_WITH_MOVE(PutDown(Piece::WHITE_ROOK, H1_MASK));
+	// 	} else {
+	// 		SAFE_CALL_WITH_MOVE(PickUp(Piece::WHITE_KING, C1_MASK));
+	// 		SAFE_CALL_WITH_MOVE(PutDown(Piece::WHITE_KING, E1_MASK));
+	// 		SAFE_CALL_WITH_MOVE(PickUp(Piece::WHITE_ROOK, D1_MASK));
+	// 		SAFE_CALL_WITH_MOVE(PutDown(Piece::WHITE_ROOK, A1_MASK));
+	// 	}
+	// }
+
 	if (m_isWhiteTurn) {
-		bool isKingside = (move.m_to == G8_MASK);
-		if (isKingside) {
-			PickUp(Piece::BLACK_KING, G8_MASK);
-			PutDown(Piece::BLACK_KING, E8_MASK);
-			PickUp(Piece::BLACK_ROOK, F8_MASK);
-			PutDown(Piece::BLACK_ROOK, H8_MASK);
-		} else {
-			PickUp(Piece::BLACK_KING, C8_MASK);
-			PutDown(Piece::BLACK_KING, E8_MASK);
-			PickUp(Piece::BLACK_ROOK, D8_MASK);
-			PutDown(Piece::BLACK_ROOK, A8_MASK);
-		}
-	} else {
 		bool isKingside = (move.m_to == G1_MASK);
 		if (isKingside) {
-			PickUp(Piece::WHITE_KING, G1_MASK);
-			PutDown(Piece::WHITE_KING, E1_MASK);
-			PickUp(Piece::WHITE_ROOK, F1_MASK);
-			PutDown(Piece::WHITE_ROOK, H1_MASK);
+			SAFE_CALL_WITH_MOVE(PickUp(Piece::WHITE_KING, G1_MASK));
+			SAFE_CALL_WITH_MOVE(PutDown(Piece::WHITE_KING, E1_MASK));
+			SAFE_CALL_WITH_MOVE(PickUp(Piece::WHITE_ROOK, F1_MASK));
+			SAFE_CALL_WITH_MOVE(PutDown(Piece::WHITE_ROOK, H1_MASK));
 		} else {
-			PickUp(Piece::WHITE_KING, C1_MASK);
-			PutDown(Piece::WHITE_KING, E1_MASK);
-			PickUp(Piece::WHITE_ROOK, D1_MASK);
-			PutDown(Piece::WHITE_ROOK, A1_MASK);
+			SAFE_CALL_WITH_MOVE(PickUp(Piece::WHITE_KING, C1_MASK));
+			SAFE_CALL_WITH_MOVE(PutDown(Piece::WHITE_KING, E1_MASK));
+			SAFE_CALL_WITH_MOVE(PickUp(Piece::WHITE_ROOK, D1_MASK));
+			SAFE_CALL_WITH_MOVE(PutDown(Piece::WHITE_ROOK, A1_MASK));
+		}
+	} else {
+		bool isKingside = (move.m_to == G8_MASK);
+		if (isKingside) {
+			SAFE_CALL_WITH_MOVE(PickUp(Piece::BLACK_KING, G8_MASK));
+			SAFE_CALL_WITH_MOVE(PutDown(Piece::BLACK_KING, E8_MASK));
+			SAFE_CALL_WITH_MOVE(PickUp(Piece::BLACK_ROOK, F8_MASK));
+			SAFE_CALL_WITH_MOVE(PutDown(Piece::BLACK_ROOK, H8_MASK));
+		} else {
+			SAFE_CALL_WITH_MOVE(PickUp(Piece::BLACK_KING, C8_MASK));
+			SAFE_CALL_WITH_MOVE(PutDown(Piece::BLACK_KING, E8_MASK));
+			SAFE_CALL_WITH_MOVE(PickUp(Piece::BLACK_ROOK, D8_MASK));
+			SAFE_CALL_WITH_MOVE(PutDown(Piece::BLACK_ROOK, A8_MASK));
 		}
 	}
 }
 
 void Board::UndoPromotionMove(const Move& move, const Undo& undo) {
-	// Again remember that the turn will be flipped
-	Piece pawn = m_isWhiteTurn ? Piece::BLACK_PAWN : Piece::WHITE_PAWN;
+	Piece pawn = m_isWhiteTurn ? Piece::WHITE_PAWN : Piece::BLACK_PAWN;
 
-	PickUp(move.m_promotionPiece, move.m_to);
-	PutDown(pawn, move.m_from);
+	SAFE_CALL_WITH_MOVE(PickUp(move.m_promotionPiece, move.m_to));
+	SAFE_CALL_WITH_MOVE(PutDown(pawn, move.m_from));
 }
 
-void Board::UndoSimpleMove(const Move& move, const Undo& undo) {
-	Piece piece = m_isWhiteTurn ? GetBlackPieceAtSquare(move.m_to) : GetWhitePieceAtSquare(move.m_to);
+void Board::UndoNormalMove(const Move& move) {
+	Piece piece = m_isWhiteTurn ? GetWhitePieceAtSquare(move.m_to) : GetBlackPieceAtSquare(move.m_to);
 
-	PickUp(piece, move.m_to);
-	PutDown(piece, move.m_from);
+	SAFE_CALL_WITH_MOVE(PickUp(piece, move.m_to));
+	SAFE_CALL_WITH_MOVE(PutDown(piece, move.m_from));
 }
 
 std::ostream& operator<<(std::ostream& os, const Board& board) {

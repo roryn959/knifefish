@@ -61,6 +61,11 @@ void Interface::ListenForCommands() {
 			continue;
 		}
 
+		if (input == "eval") {
+			std::cout << m_player.Evaluate() << '\n';
+			continue;
+		}
+
 		if (input == "quit") {
 			time_t connectionTime = time(nullptr);
 			std::cerr << "Log: Connection closed at " << ctime(&connectionTime) << '\n';
@@ -73,7 +78,7 @@ void Interface::ListenForCommands() {
 		}
 
 		if (input == "isready") {
-			std::cout << "readyok\n";
+			std::cout << "readyok\n" << std::flush;
 			continue;
 		}
 
@@ -93,7 +98,7 @@ void Interface::ListenForCommands() {
 			words.push_back(word);
 
 		if (words.at(0) == "position") {
-			if (!SetUpPosition(words))
+			if (!Position(words))
 				std::cerr << "Log: Position setup failed\n";
 			continue;
 		}
@@ -104,11 +109,17 @@ void Interface::ListenForCommands() {
 			continue;
 		}
 
+		if (words.at(0) == "perft") {
+			if (!Perft(words))
+				std::cerr << "Log: Perft failed\n";
+			continue;
+		}
+
 		std::cerr << "Log: input fell through...\n";
 	}
 }
 
-bool Interface::SetUpPosition(std::vector<std::string>& words) {
+bool Interface::Position(std::vector<std::string>& words) {
 	if (words.at(1) == "fen") {
 		std::cerr << "Log: fen position indicated. Currently not supported\n";
 		return false;
@@ -154,11 +165,19 @@ bool Interface::Go(std::vector<std::string>& words) {
 	if (words.at(1) == "depth") {
 		int depth = std::stoi(words.at(2));
 		const Move& move = m_player.GoDepth(depth);
-		std::cout << "bestmove " << move.ToString() << '\n';
+		std::cout << "bestmove " << move.ToString() << '\n' << std::flush;
 		return true;
 	} else {
 		std::cerr << "Log: go option not understood\n";
 	}
 
 	return false;
+}
+
+bool Interface::Perft(std::vector<std::string>& words) {
+	int depth = std::stoi(words.at(1));
+	int totalMoves = m_player.RootPerft(depth);
+	std::cout << "Total: " << totalMoves << '\n' << std::flush;
+
+	return true;
 }

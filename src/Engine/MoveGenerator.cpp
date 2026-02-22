@@ -1,7 +1,5 @@
 #include "Engine/MoveGenerator.h"
 
-// Currently skipped: en passant, castling, promotion
-// Potential performance increase by making capture checking branchless
 
 MoveGenerator::MoveGenerator(Board& board) :
 	m_board{board}
@@ -11,6 +9,7 @@ std::vector<Move> MoveGenerator::GenerateLegalMoves() {
 	std::vector<Move> pseudoMoves = GeneratePseudoMoves();
 
 	std::vector<Move> legalMoves;
+	legalMoves.reserve(218);
 
 	if (m_board.IsWhiteTurn())
 		legalMoves = FilterOutIllegalWhiteMoves(pseudoMoves);
@@ -57,6 +56,8 @@ std::vector<Move> MoveGenerator::GeneratePseudoMoves() {
 	m_emptySquares = ~m_occupiedSquares;
 
 	std::vector<Move> moves;
+	moves.reserve(218);
+
 	if (m_board.IsWhiteTurn()) {
 		PrepareWhiteMoveGeneration();
 		GenerateWhitePawnMoves(moves);
@@ -611,7 +612,7 @@ void MoveGenerator::GenerateKingMoves(std::vector<Move>& moves) {
 }
 
 void MoveGenerator::GenerateWhiteCastleMoves(std::vector<Move>& moves) {
-	if (m_board.IsWhiteKingsideCastlePermitted()) {
+	if (m_board.GetCastlePermission(CastlePermission::WHITE_KINGSIDE)) {
 		bool isKingsideClear = (m_occupiedSquares & WHITE_KINGSIDE_CASTLE_SPACE_MASK).Empty();
 		bool isNotThroughCheck = (m_enemyAttackSet & WHITE_KINGSIDE_CASTLE_CHECKS_MASK).Empty();
 		if (isKingsideClear && isNotThroughCheck) {
@@ -619,7 +620,7 @@ void MoveGenerator::GenerateWhiteCastleMoves(std::vector<Move>& moves) {
 		}
 	}
 
-	if (m_board.IsWhiteQueensideCastlePermitted()) {
+	if (m_board.GetCastlePermission(CastlePermission::WHITE_QUEENSIDE)) {
 		bool isQueensideClear = (m_occupiedSquares & WHITE_QUEENSIDE_CASTLE_SPACE_MASK).Empty();
 		bool isNotThroughCheck = (m_enemyAttackSet & WHITE_QUEENSIDE_CASTLE_CHECKS_MASK).Empty();
 		if (isQueensideClear && isNotThroughCheck) {
@@ -629,7 +630,7 @@ void MoveGenerator::GenerateWhiteCastleMoves(std::vector<Move>& moves) {
 }
 
 void MoveGenerator::GenerateBlackCastleMoves(std::vector<Move>& moves) {
-	if (m_board.IsBlackKingsideCastlePermitted()) {
+	if (m_board.GetCastlePermission(CastlePermission::BLACK_KINGSIDE)) {
 		bool isKingsideClear = (m_occupiedSquares & BLACK_KINGSIDE_CASTLE_SPACE_MASK).Empty();
 		bool isNotThroughCheck = (m_enemyAttackSet & BLACK_KINGSIDE_CASTLE_CHECKS_MASK).Empty();
 		if (isKingsideClear && isNotThroughCheck) {
@@ -637,7 +638,7 @@ void MoveGenerator::GenerateBlackCastleMoves(std::vector<Move>& moves) {
 		}
 	}
 
-	if (m_board.IsBlackQueensideCastlePermitted()) {
+	if (m_board.GetCastlePermission(CastlePermission::BLACK_QUEENSIDE)) {
 		bool isQueensideClear = (m_occupiedSquares & BLACK_QUEENSIDE_CASTLE_SPACE_MASK).Empty();
 		bool isNotThroughCheck = (m_enemyAttackSet & BLACK_QUEENSIDE_CASTLE_CHECKS_MASK).Empty();
 		if (isQueensideClear && isNotThroughCheck) {

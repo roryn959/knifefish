@@ -1,5 +1,6 @@
 #pragma once
 
+#include <array>
 #include <chrono>
 #include <cstdlib>
 #include <iostream>
@@ -16,24 +17,126 @@
 #include "Engine/Undo.h"
 
 
-constexpr int PIECE_VALUES[] = { 1, 3, 3, 5, 9, 1000, -1, -3, -3, -5, -9, -1000 };
+constexpr std::array<int, 12> PIECE_VALUES = { 100, 320, 330, 500, 900, 20000, -100, -320, -330, -500, -900, -20000 };
+
+constexpr std::array<int, 64> FlippedPst(const std::array<int, static_cast<size_t>(Square::COUNT)>& pst) {
+	std::array<int, static_cast<size_t>(Square::COUNT)> flipped;
+
+	for (int i = 0; i < static_cast<size_t>(Square::COUNT); ++i)
+		flipped[i] = -pst[i ^ 56];
+	
+	return flipped;
+}
+
+constexpr std::array<int, static_cast<size_t>(Square::COUNT)> BLACK_PAWN_PST = {
+	0,  0,  0,  0,  0,  0,  0,  0,
+	50, 50, 50, 50, 50, 50, 50, 50,
+	10, 10, 20, 30, 30, 20, 10, 10,
+	5,  5, 10, 25, 25, 10,  5,  5,
+	0,  0,  0, 20, 20,  0,  0,  0,
+	5, -5,-10,  0,  0,-10, -5,  5,
+	5, 10, 10,-20,-20, 10, 10,  5,
+	0,  0,  0,  0,  0,  0,  0,  0
+};
+
+constexpr std::array<int, static_cast<size_t>(Square::COUNT)> BLACK_KNIGHT_PST = {
+	-50,-40,-30,-30,-30,-30,-40,-50,
+	-40,-20,  0,  0,  0,  0,-20,-40,
+	-30,  0, 10, 15, 15, 10,  0,-30,
+	-30,  5, 15, 20, 20, 15,  5,-30,
+	-30,  0, 15, 20, 20, 15,  0,-30,
+	-30,  5, 10, 15, 15, 10,  5,-30,
+	-40,-20,  0,  5,  5,  0,-20,-40,
+	-50,-40,-30,-30,-30,-30,-40,-50
+};
+
+constexpr std::array<int, static_cast<size_t>(Square::COUNT)> BLACK_BISHOP_PST = {
+	-20,-10,-10,-10,-10,-10,-10,-20,
+	-10,  0,  0,  0,  0,  0,  0,-10,
+	-10,  0,  5, 10, 10,  5,  0,-10,
+	-10,  5,  5, 10, 10,  5,  5,-10,
+	-10,  0, 10, 10, 10, 10,  0,-10,
+	-10, 10, 10, 10, 10, 10, 10,-10,
+	-10,  5,  0,  0,  0,  0,  5,-10,
+	-20,-10,-10,-10,-10,-10,-10,-20
+};
+
+constexpr std::array<int, static_cast<size_t>(Square::COUNT)> BLACK_ROOK_PST = {
+	 0,  0,  0,  0,  0,  0,  0,  0,
+	5, 10, 10, 10, 10, 10, 10,  5,
+	-5,  0,  0,  0,  0,  0,  0, -5,
+	-5,  0,  0,  0,  0,  0,  0, -5,
+	-5,  0,  0,  0,  0,  0,  0, -5,
+	-5,  0,  0,  0,  0,  0,  0, -5,
+	-5,  0,  0,  0,  0,  0,  0, -5,
+	0,  0,  0,  5,  5,  0,  0,  0
+};
+
+constexpr std::array<int, static_cast<size_t>(Square::COUNT)> BLACK_QUEEN_PST = {
+	-20,-10,-10, -5, -5,-10,-10,-20,
+	-10,  0,  0,  0,  0,  0,  0,-10,
+	-10,  0,  5,  5,  5,  5,  0,-10,
+	-5,  0,  5,  5,  5,  5,  0, -5,
+	0,  0,  5,  5,  5,  5,  0, -5,
+	-10,  5,  5,  5,  5,  5,  0,-10,
+	-10,  0,  5,  0,  0,  0,  0,-10,
+	-20,-10,-10, -5, -5,-10,-10,-20
+};
+
+constexpr std::array<int, static_cast<size_t>(Square::COUNT)> BLACK_KING_PST = {
+	-30,-40,-40,-50,-50,-40,-40,-30,
+	-30,-40,-40,-50,-50,-40,-40,-30,
+	-30,-40,-40,-50,-50,-40,-40,-30,
+	-30,-40,-40,-50,-50,-40,-40,-30,
+	-20,-30,-30,-40,-40,-30,-30,-20,
+	-10,-20,-20,-20,-20,-20,-20,-10,
+	20, 20,  0,  0,  0,  0, 20, 20,
+	20, 30, 10,  0,  0, 10, 30, 20
+};
+
+constexpr std::array<int, static_cast<size_t>(Square::COUNT)> WHITE_PAWN_PST = FlippedPst(BLACK_PAWN_PST);
+constexpr std::array<int, static_cast<size_t>(Square::COUNT)> WHITE_KNIGHT_PST = FlippedPst(BLACK_KNIGHT_PST);
+constexpr std::array<int, static_cast<size_t>(Square::COUNT)> WHITE_BISHOP_PST = FlippedPst(BLACK_BISHOP_PST);
+constexpr std::array<int, static_cast<size_t>(Square::COUNT)> WHITE_ROOK_PST = FlippedPst(BLACK_ROOK_PST);
+constexpr std::array<int, static_cast<size_t>(Square::COUNT)> WHITE_QUEEN_PST = FlippedPst(BLACK_QUEEN_PST);
+constexpr std::array<int, static_cast<size_t>(Square::COUNT)> WHITE_KING_PST = FlippedPst(BLACK_KING_PST);
+
+constexpr std::array<std::array<int, static_cast<size_t>(Square::COUNT)>, Piece::NUM_PIECES> pieceSquareTables = {
+	WHITE_PAWN_PST,
+	WHITE_KNIGHT_PST,
+	WHITE_BISHOP_PST,
+	WHITE_ROOK_PST,
+	WHITE_QUEEN_PST,
+	WHITE_KING_PST,
+	BLACK_PAWN_PST,
+	BLACK_KNIGHT_PST,
+	BLACK_BISHOP_PST,
+	BLACK_ROOK_PST,
+	BLACK_QUEEN_PST,
+	BLACK_KING_PST
+};
 
 class Player {
 public:
 	Player(Board& board);
 
-	Move GoDepth(int depth);
-
 	int Evaluate();
-
-	Move RootNegamax(int depth);
-	int Negamax(int depth, int colour);
+	Move GoDepth(int depth);
+	int RootPerft(int depth);
 
 private:
-	Board& m_board;
-	MoveGenerator m_moveGenerator;
+	bool IsCheckmate();
+
+	Move IterativeDeepening(int maxDepth);
+
+	Move RootNegamax(int depth, const Move& movePv);
+	int Negamax(int depth, int alpha, int beta);
+	int Perft(int depth);
 
 #if DEBUG
 	int m_nodesSearched;
 #endif
+
+	Board& m_board;
+	MoveGenerator m_moveGenerator;
 };

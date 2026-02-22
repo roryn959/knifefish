@@ -1,28 +1,51 @@
 #pragma once
 
+#include <array>
 #include <iostream>
 
+#include "Config.h"
 #include "BoardRepresentation/Pieces.h"
-
+#include "BoardRepresentation/Types.h"
 #include "Engine/Move.h"
 #include "Engine/Undo.h"
+
+
+// Macro to do a safe call during move stuff.
+#if DEBUG
+#define SAFE_CALL_WITH_MOVE(expr)													\
+do {																				\
+	if (!(expr)) {																	\
+		std::cerr << "Error while executing " << #expr << '\n';						\
+		std::cerr << *this;															\
+		std::cerr << move;															\
+		std::exit(1);																\
+	} 																				\
+	if (!CheckBoardOccupancy()) {													\
+		std::cerr << "Board occupancy failure after executing " << #expr << '\n';	\
+		std::cerr << *this;															\
+		std::cerr << move;															\
+		std::exit(1);																\
+		}																			\
+} while (false)
+#else
+#define SAFE_CALL_WITH_MOVE(expr) (void) expr
+#endif
 
 
 class Board {
 public:
 	Board() = default;
 
-	inline bool IsWhiteTurn() const { return m_isWhiteTurn; }
+	inline bool IsWhiteTurn() const noexcept { return m_isWhiteTurn; }
+	inline void SwitchTurn() noexcept { m_isWhiteTurn = !m_isWhiteTurn; }
 
-	inline bool IsWhiteKingsideCastlePermitted() 	const { return m_isWhiteKingsideCastlePermitted; }
-	inline bool IsWhiteQueensideCastlePermitted() 	const { return m_isWhiteQueensideCastlePermitted; }
-	inline bool IsBlackKingsideCastlePermitted() 	const { return m_isBlackKingsideCastlePermitted; }
-	inline bool IsBlackQueensideCastlePermitted() 	const { return m_isBlackQueensideCastlePermitted; }
+	inline bool GetCastlePermission(CastlePermission castlePermission) const noexcept { return m_castlePermissions[static_cast<size_t>(castlePermission)]; }
+	inline void SetCastlePermission(CastlePermission castlePermission, bool permitted) noexcept { m_castlePermissions[static_cast<size_t>(castlePermission)] = permitted; }
 
 	bool IsAttackedByWhite(Bitboard squares) const;
 	bool IsAttackedByBlack(Bitboard squares) const;
 
-	inline Bitboard GetPieceBitboard(Piece p) const { return m_pieceBitboards[p]; }
+	inline Bitboard GetPieceBitboard(Piece p) const noexcept { return m_pieceBitboards[p]; }
 	Bitboard GetAllPieceBitboard() const;
 	Bitboard GetWhitePieceBitboard() const;
 	Bitboard GetBlackPieceBitboard() const;
@@ -30,7 +53,7 @@ public:
 	Piece GetWhitePieceAtSquare(Bitboard bb);
 	Piece GetBlackPieceAtSquare(Bitboard bb);
 
-	inline Bitboard GetEnPassantSquare() const { return m_enPassantSquare; }
+	inline Bitboard GetEnPassantSquare() const noexcept { return m_enPassantSquare; }
 
 	Bitboard GetWhiteAttackSet() const;
 	Bitboard GetBlackAttackSet() const;
@@ -38,23 +61,12 @@ public:
 	void Initialise();
 	void SetUpStartPosition();
 
-	inline void PickUp(Piece piece, Bitboard bb) { m_pieceBitboards[piece] &= ~bb; }
-	inline void PutDown(Piece piece, Bitboard bb) { m_pieceBitboards[piece] |= bb; }
-
 	Undo MakeMove(const Move& move);
-	void MakeCastleMove(const Move& move);
-	void MakePromotionMove(const Move& move);
-	void MakeSimpleMove(const Move& move);
-
 	void UndoMove(const Move& move, const Undo& undo);
-	void UndoCastleMove(const Move& move);
-	void UndoPromotionMove(const Move& move, const Undo& undo);
-	void UndoSimpleMove(const Move& move, const Undo& undo);
 
 	friend std::ostream& operator<<(std::ostream& os, const Board& board);
 
 private:
-
 	Bitboard GetWhitePawnAttackSet(Bitboard pawns) const;
 	Bitboard GetBlackPawnAttackSet(Bitboard pawns) const;
 	Bitboard GetKnightAttackSet(Bitboard knights) const;
@@ -63,14 +75,29 @@ private:
 	Bitboard GetQueenAttackSet(Bitboard queens, Bitboard emptySquares) const;
 	Bitboard GetKingAttackSet(Bitboard king) const;
 
+	void DoCapture(const Move& move, Undo& undo);
+	void DoEnPassantCapture(const Move& move);
+	void MakeCastleMove(const Move& move);
+	void MakePromotionMove(const Move& move);
+	void MakeNormalMove(const Move& move);
+
+	void UndoCapture(const Move& move, const Undo& undo);
+	void UndoEnPassantCapture(const Move& move);
+	void UndoCastleMove(const Move& move);
+	void UndoPromotionMove(const Move& move, const Undo& undo);
+	void UndoNormalMove(const Move& move);
+
+	bool PickUp(Piece piece, Bitboard bb);
+
+	bool PutDown(Piece piece, Bitboard bb);
+
+#if DEBUG
+	bool CheckBoardOccupancy() const;
+	void CheckKingCount(const Move& move) const;
+#endif
+
 	Bitboard m_pieceBitboards[Piece::NUM_PIECES];
-
-	bool m_isWhiteTurn;
-
-	bool m_isWhiteKingsideCastlePermitted;
-	bool m_isWhiteQueensideCastlePermitted;
-	bool m_isBlackKingsideCastlePermitted;
-	bool m_isBlackQueensideCastlePermitted;
-
+	std::array<bool, static_cast<size_t>(CastlePermission::COUNT)> m_castlePermissions;
 	Bitboard m_enPassantSquare;
+	bool m_isWhiteTurn;
 };

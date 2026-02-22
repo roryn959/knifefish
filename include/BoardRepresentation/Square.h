@@ -18,7 +18,7 @@
 #define X(square) square,
 enum class Square : uint8_t {
 	SQUARE_LIST
-	NUMBER_OF_SQUARES
+	COUNT
 };
 #undef X
 

@@ -24,8 +24,9 @@ public:
 
 private:
 
-	bool SetUpPosition(std::vector<std::string>& words);
+	bool Position(std::vector<std::string>& words);
 	bool Go(std::vector<std::string>& words);
+	bool Perft(std::vector<std::string>& words);
 
 	Board m_board;
 	MoveGenerator m_moveGenerator;
