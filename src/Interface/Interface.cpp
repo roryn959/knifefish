@@ -107,26 +107,25 @@ void Interface::ListenForCommands() {
 			std::cerr << "Log: ponderhit called. Currently does nothing\n";
 		}
 
-		std::stringstream ss(input);
-		std::vector<std::string> words;
-		std::string word;
-		while (getline(ss, word, ' '))
-			words.push_back(word);
+		std::istringstream tokenStream(input);
+		std::string token;
 
-		if (words.at(0) == "position") {
-			if (!Position(words))
+		tokenStream >> token;
+
+		if (token == "position") {
+			if (!Position(tokenStream))
 				std::cerr << "Log: Position setup failed\n";
 			continue;
 		}
 
-		if (words.at(0) == "go") {
-			if (!Go(words))
+		if (token == "go") {
+			if (!Go(tokenStream))
 				std::cerr << "Log: Go failed\n";
 			continue;
 		}
 
-		if (words.at(0) == "perft") {
-			if (!Perft(words))
+		if (token == "perft") {
+			if (!Perft(tokenStream))
 				std::cerr << "Log: Perft failed\n";
 			continue;
 		}
@@ -135,31 +134,32 @@ void Interface::ListenForCommands() {
 	}
 }
 
-bool Interface::Position(std::vector<std::string>& words) {
-	if (words.at(1) == "fen") {
+bool Interface::Position(std::istringstream& tokenStream) {
+	std::string token;
+	tokenStream >> token;
+
+	if (token == "fen") {
 		std::cerr << "Log: fen position indicated. Currently not supported\n";
 		return false;
-	} else if (words.at(1) == "startpos") {
+	} else if (token == "startpos") {
 		m_board.SetUpStartPosition();
-		if (words.size() <=2)
-			return true;
 	} else {
-		std::cerr << "Log: Invalid followup to position\n";
+		std::cerr << "Log: Unrecognised position reference.\n";
 		return false;
 	}
 
-	if (words.at(2) != "moves") {
-		return false;
-	}
+	if (!(tokenStream >> token))
+		return true;
 
-	for (int i = 3; i < words.size(); ++i) {
-		std::string& sRequestedMove = words.at(i);
+	if (token != "moves")
+		return false;
+
+	while (tokenStream >> token) {
 		std::vector<Move> legalMoves = m_moveGenerator.GenerateLegalMoves();
 
 		bool foundMove = false;
 		for (const Move& move : legalMoves) {
-			std::string sMove = move.ToString();
-			if (sRequestedMove == sMove) {
+			if (token == move.ToString()) {
 				m_board.MakeMove(move);
 				foundMove = true;
 				break;
@@ -167,31 +167,69 @@ bool Interface::Position(std::vector<std::string>& words) {
 		}
 
 		if (!foundMove) {
-			std::cerr << "Log: Illegal move {" << sRequestedMove << "}\n";
+			std::cerr << "Log: Illegal move {" << token << "}\n";
 			return false;
 		}
 	}
 
-	std::cerr << m_board;
+	return true;
+}
+
+bool Interface::Go(std::istringstream& tokenStream) {
+	// if (words.at(1) == "depth") {
+	// 	int depth = std::stoi(words.at(2));
+	// 	const Move& move = m_player.GoDepth(depth);
+	// 	std::cout << "bestmove " << move.ToString() << '\n' << std::flush;
+	// 	return true;
+	// } else {
+	// 	std::cerr << "Log: go option not understood\n";
+	// 	return false;
+	// }
+
+	// return false;
+
+	int depth = -1;
+	int wtime = -1;
+	int btime = -1;
+	int winc = -1;
+	int binc = -1;
+	int movestogo = -1;
+	int movetime = -1;
+
+	std::string token;
+	
+	while (tokenStream >> token) {
+		if (token == "depth") tokenStream >> depth;
+		else if (token == "wtime") tokenStream >> wtime;
+		else if (token == "btime") tokenStream >> btime;
+		else if (token == "winc") tokenStream >> winc;
+		else if (token == "binc") tokenStream >> binc;
+		else if (token == "movestogo") tokenStream >> movestogo;
+		else if (token == "movetime") tokenStream >> movetime;
+		else {
+			std::cout << "Error: Unrecognised option {" << token << "}.\n";
+			return false;
+		}
+	}
+
+	Move bestMove = m_player.Go(depth, wtime, btime, winc, binc, movestogo, movetime);
+	std::cout << bestMove;
 
 	return true;
 }
 
-bool Interface::Go(std::vector<std::string>& words) {
-	if (words.at(1) == "depth") {
-		int depth = std::stoi(words.at(2));
-		const Move& move = m_player.GoDepth(depth);
-		std::cout << "bestmove " << move.ToString() << '\n' << std::flush;
-		return true;
-	} else {
-		std::cerr << "Log: go option not understood\n";
+bool Interface::Perft(std::istringstream& tokenStream) {
+	int depth = -1; 
+	if (!(tokenStream >> depth)) {
+		std::cout << "Error: something went wrong...\n";
+		return false;
 	}
 
-	return false;
-}
+	if (depth <= 0) {
+		std::cout << "Error: Perft depth must be at least 1.\n";
+		return false;
+	}
 
-bool Interface::Perft(std::vector<std::string>& words) {
-	int depth = std::stoi(words.at(1));
 	int totalMoves = m_player.RootPerft(depth);
 	std::cout << "Total: " << totalMoves << '\n' << std::flush;
 

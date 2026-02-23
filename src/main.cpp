@@ -8,14 +8,6 @@
 
 
 int main() {
-	Board board;
-	MoveGenerator mg(board);
-	Player player(board);
-
-	board.SetUpStartPosition();
-	player.GoDepth(7);
-	return 0;
-
 	Interface interface;
 
 	interface.ListenForConnection();

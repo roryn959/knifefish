@@ -18,6 +18,13 @@
 #include "Engine/Undo.h"
 
 
+using Clock = std::chrono::steady_clock;
+using Moment = Clock::time_point;
+using ms = std::chrono::milliseconds;
+
+constexpr double MillisecsToSecs(int ms) { return ms / 1000.0; }
+constexpr int SecsToMillisecs(double secs) { return round(secs * 1000.0); }
+
 constexpr int16_t MATE_SCORE { 30'000 };
 constexpr int16_t MAX_SCORE { 32'000 };
 constexpr std::array<int, 12> PIECE_VALUES = { 100, 320, 330, 500, 900, 10000, -100, -320, -330, -500, -900, -10000 };
@@ -124,15 +131,17 @@ public:
 	Player(Board& board);
 
 	int16_t Evaluate();
-	Move GoDepth(int8_t depth);
+
+	Move Go(int depth, int wtime, int btime, int winc, int binc, int movestogo, int movetime);
+
 	int RootPerft(int8_t depth);
 
 private:
 	bool IsCheckmate();
 
-	Move IterativeDeepening(int8_t maxDepth);
+	Move IterativeDeepening(int8_t maxDepth, Moment timeDeadline);
+	int16_t RootNegamax(int8_t depth, const Move& movePv, Move& bestMove, Moment timeDeadline);
 
-	Move RootNegamax(int8_t depth, const Move& movePv);
 	int16_t Negamax(int8_t depth, int16_t alpha, int16_t beta);
 	int Perft(int8_t depth);
 

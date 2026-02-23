@@ -12,8 +12,26 @@ Player::Player(Board& board) :
 	m_transpositionTable{}
 {}
 
-Move Player::GoDepth(int8_t depth) {
-	return IterativeDeepening(depth);
+Move Player::Go(int depth, int wtime, int btime, int winc, int binc, int movestogo, int movetime) {
+	Moment startTime = Clock::now();
+
+	// Set defaults (or otherwise make decisions).
+	if (depth <= 0) depth = 10;
+	int timeAllowedSecs = 10;
+
+	Moment deadline = startTime + ms(SecsToMillisecs(timeAllowedSecs));
+	Move bestMove = IterativeDeepening(depth, deadline);
+
+#if DEBUG
+	auto searchTime = Clock::now() - startTime;
+	auto searchTimeS = std::chrono::duration_cast<ms>(searchTime).count() / 1000.0;
+	std::cerr << "Log: Nodes searched: " << m_nodesSearched << '\n';
+	std::cerr << "Log: Search speed (nps): " << m_nodesSearched / searchTimeS << '\n';
+	std::cerr << "Log: Transpositions hit: " << m_transpositionsHit << '\n';
+	std::cerr << "Log: Search time (s): " << searchTimeS << "\n\n";
+#endif
+
+	return bestMove;
 }
 
 int16_t Player::Evaluate() {
@@ -35,40 +53,33 @@ int16_t Player::Evaluate() {
 	return m_board.IsWhiteTurn() ? eval : -eval;
 }
 
-Move Player::IterativeDeepening(int8_t maxDepth) {
-	// Initialise garbage move that will never clash with anything
-	Move bestMove{ A1_MASK, A1_MASK };
+Move Player::IterativeDeepening(int8_t maxDepth, Moment timeDeadline) {
+	// Initialise PV move to garbage move that will never clash with anything
+	Move movePv{ A1_MASK, A1_MASK };
+	int16_t bestScore = -MAX_SCORE;
+	int8_t depth = 1;
 
-	int depth = 1;
 	while (depth <= maxDepth) {
-		auto startTime = std::chrono::system_clock::now();
+		if (Clock::now() >= timeDeadline)
+			break;
 
-		bestMove = RootNegamax(depth, bestMove);
-
-		auto endTime = std::chrono::system_clock::now();
+		Move bestMove;
+		int16_t score = RootNegamax(depth, movePv, bestMove, timeDeadline);
+		if (score > bestScore) {
+			movePv = bestMove;
+		}
 
 		++depth;
-
-#if DEBUG
-		auto searchTime = endTime - startTime;
-		auto searchTimeMs = std::chrono::duration_cast<std::chrono::milliseconds>(searchTime).count();
-		auto searchTimeS = searchTimeMs / 1000.0;
-
-		std::cerr << "Log: Nodes searched: " << m_nodesSearched << '\n';
-		std::cerr << "Log: Search speed (nps): " << m_nodesSearched / searchTimeS << '\n';
-		std::cerr << "Log: Transpositions hit: " << m_transpositionsHit << '\n';
-		std::cerr << "Log: Search time (s): " << searchTimeS << "\n\n";
-#endif
 	}
 
-	return bestMove;
+	return movePv;
 }
 
-Move Player::RootNegamax(int8_t depth, const Move& movePv) {
+int16_t Player::RootNegamax(int8_t depth, const Move& movePv, Move& bestMove, Moment deadline) {
 #if DEBUG
 	m_nodesSearched = 1;
 	m_transpositionsHit = 0;
-	std::cerr << "Log: Calling root Negamax with depth " << (int) depth << '\n';
+	std::cerr << "Log: Called root Negamax with depth " << (int) depth << '\n';
 #endif
 
 	std::vector<Move> moves = m_moveGenerator.GenerateLegalMoves();
@@ -83,7 +94,6 @@ Move Player::RootNegamax(int8_t depth, const Move& movePv) {
 		}
 	}
 
-	Move bestMove;
 	int16_t bestScore = -MATE_SCORE;
 	int16_t alpha = -MAX_SCORE;
 	int16_t beta = MAX_SCORE;
@@ -100,6 +110,9 @@ Move Player::RootNegamax(int8_t depth, const Move& movePv) {
 				alpha = score;
 			}
 		}
+
+		if (Clock::now() >= deadline)
+			break;
 	}
 
 #if DEBUG
@@ -107,7 +120,7 @@ Move Player::RootNegamax(int8_t depth, const Move& movePv) {
 	std::cerr << "Log: Negamax " << depth << " found the best move to be " << bestMove;
 #endif
 
-	return bestMove;
+	return bestScore;
 }
 
 bool Player::IsCheckmate() {

@@ -24,9 +24,9 @@ public:
 
 private:
 
-	bool Position(std::vector<std::string>& words);
-	bool Go(std::vector<std::string>& words);
-	bool Perft(std::vector<std::string>& words);
+	bool Position(std::istringstream& tokenStream);
+	bool Go(std::istringstream& tokenStream);
+	bool Perft(std::istringstream& tokenStream);
 
 	Board m_board;
 	MoveGenerator m_moveGenerator;
