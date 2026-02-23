@@ -8,6 +8,10 @@ MoveGenerator::MoveGenerator(Board& board) :
 std::vector<Move> MoveGenerator::GenerateLegalMoves() {
 	std::vector<Move> pseudoMoves = GeneratePseudoMoves();
 
+#if DEBUG
+	Hash beforeHash = m_board.GetHash();
+#endif
+
 	std::vector<Move> legalMoves;
 	legalMoves.reserve(218);
 
@@ -15,6 +19,14 @@ std::vector<Move> MoveGenerator::GenerateLegalMoves() {
 		legalMoves = FilterOutIllegalWhiteMoves(pseudoMoves);
 	else
 		legalMoves = FilterOutIllegalBlackMoves(pseudoMoves);
+
+#if DEBUG
+	Hash afterHash = m_board.GetHash();
+	if (beforeHash != afterHash) {
+		std::cerr << "Error: Hashing issue detected during move generation\n";
+		std::exit(1);
+	}
+#endif
 
 	return legalMoves;
 }

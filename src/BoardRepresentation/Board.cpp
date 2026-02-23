@@ -2,12 +2,16 @@
 
 #include <cassert>
 
-void Board::Initialise() {
-	// Eventually will do things like set up tables and stuff
-	;
-}
 
 void Board::SetUpStartPosition() {
+	// There is some logic for incrementally hashing inside the Set methods.
+	// However since we are starting from scratch, we don't really want to use them
+	// because we may get weird bugs from hashes not being applied properly if a
+	// property doesn't change by resetting the position even though it should since the hash is reset.
+	// So, we want to just reset the board manually and apply the hashes manually here (and probably when I do FEN).
+
+	m_zobrist.ResetHash();
+
 	m_isWhiteTurn = true;
 
 	#define X(permission) m_castlePermissions[static_cast<size_t>(CastlePermission::permission)] = true;
@@ -19,27 +23,23 @@ void Board::SetUpStartPosition() {
 	#define X(piece) m_pieceBitboards[Piece::piece] = GetStartingPositionBitboard<Piece::piece>();
 	PIECES_LIST
 	#undef X
-}
 
+	// Update hash
 
-bool Board::PickUp(Piece piece, Bitboard bb) {
-#if DEBUG
-	if (piece == Piece::EMPTY) return false;
-	if ((m_pieceBitboards[piece] & bb).Empty()) return false;
-#endif
-	m_pieceBitboards[piece] &= ~bb; 
-	return true;
-}
+	#define X(piece) 										\
+	for (Square sq : m_pieceBitboards[Piece::piece]) { 		\
+		m_zobrist.ApplyPieceHash(Piece::piece, sq); 		\
+	}
+	PIECES_LIST
+	#undef X
 
-bool Board::PutDown(Piece piece, Bitboard bb) {
-#if DEBUG
-	if (piece == Piece::EMPTY) return false;
+	#define X(permission) m_zobrist.ApplyCastleHash(CastlePermission::permission);
+	CASTLE_PERMISSIONS_LIST
+	#undef X
 
-	if ((GetAllPieceBitboard() & bb).Any()) return false;
-#endif
+	m_zobrist.ApplyEnPassantHash(m_enPassantSquare.ToSquare());
 
-	m_pieceBitboards[piece] |= bb;
-	return true;
+	m_zobrist.ApplyWhiteTurnHash();
 }
 
 #if DEBUG
@@ -418,6 +418,77 @@ Piece Board::GetBlackPieceAtSquare(Bitboard bb) {
 	return piece;
 }
 
+void Board::RebuildHash() {
+	m_zobrist.ResetHash();
+
+	#define X(piece) 										\
+	for (Square sq : GetPieceBitboard(Piece::piece))		\
+		m_zobrist.ApplyPieceHash(Piece::piece, sq);
+
+	PIECES_LIST
+	#undef X
+
+	#define X(permission)											\
+	if (GetCastlePermission(CastlePermission::permission))			\
+		m_zobrist.ApplyCastleHash(CastlePermission::permission);
+
+	CASTLE_PERMISSIONS_LIST
+	#undef X
+
+	m_zobrist.ApplyEnPassantHash(m_enPassantSquare.ToSquare());
+
+	if (IsWhiteTurn())
+		m_zobrist.ApplyWhiteTurnHash();
+}
+
+void Board::SetCastlePermission(CastlePermission castlePermission, bool permitted) noexcept {
+	if (permitted == GetCastlePermission(castlePermission)) return;
+
+	m_castlePermissions[static_cast<size_t>(castlePermission)] = permitted;
+	m_zobrist.ApplyCastleHash(castlePermission);
+}
+
+void Board::SetCastlePermissions(std::array<bool, static_cast<size_t>(CastlePermission::COUNT)> castlePermissions) noexcept {
+	#define X(permission) SetCastlePermission(CastlePermission::permission, castlePermissions[static_cast<size_t>(CastlePermission::permission)]);
+	CASTLE_PERMISSIONS_LIST
+	#undef X
+}
+
+void Board::SetEnPassantSquare(Bitboard bb) noexcept {
+	if (m_enPassantSquare == bb) return;
+
+	m_zobrist.ApplyEnPassantHash(m_enPassantSquare.ToSquare());
+	m_enPassantSquare = bb;
+	m_zobrist.ApplyEnPassantHash(m_enPassantSquare.ToSquare());
+}
+
+void Board::SwitchTurn() noexcept {
+	m_isWhiteTurn = !m_isWhiteTurn;
+	m_zobrist.ApplyWhiteTurnHash();
+}
+
+bool Board::PickUp(Piece piece, Bitboard bb) {
+#if DEBUG
+	if (piece == Piece::EMPTY) return false;
+	if ((m_pieceBitboards[piece] & bb).Empty()) return false;
+#endif
+
+	m_pieceBitboards[piece] &= ~bb; 
+	m_zobrist.ApplyPieceHash(piece, bb.ToSquare());
+	return true;
+}
+
+bool Board::PutDown(Piece piece, Bitboard bb) {
+#if DEBUG
+	if (piece == Piece::EMPTY) return false;
+	if ((GetAllPieceBitboard() & bb).Any()) return false;
+#endif
+
+	m_pieceBitboards[piece] |= bb;
+	m_zobrist.ApplyPieceHash(piece, bb.ToSquare());
+	return true;
+}
+
 Undo Board::MakeMove(const Move& move) {
 	Undo undo {
 		Piece::EMPTY,
@@ -426,12 +497,14 @@ Undo Board::MakeMove(const Move& move) {
 		m_castlePermissions
 	};
 
-	m_enPassantSquare = 0LL;
+	SetEnPassantSquare(0ULL);
 
 	if (move.m_isCapture) {
 		DoCapture(move, undo);
 	} else if (move.m_isEnPassant) {
 		DoEnPassantCapture(move);
+	} else if (move.m_isDoublePawnPush) {
+		DoDoublePawnPush(move);
 	}
 
 	if (move.m_isCastle) {
@@ -452,7 +525,7 @@ Undo Board::MakeMove(const Move& move) {
 }
 
 void Board::DoCapture(const Move& move, Undo& undo) {
-	Piece piece = m_isWhiteTurn ? GetBlackPieceAtSquare(move.m_to) : GetWhitePieceAtSquare(move.m_to);
+	Piece piece = IsWhiteTurn() ? GetBlackPieceAtSquare(move.m_to) : GetWhitePieceAtSquare(move.m_to);
 
 	SAFE_CALL_WITH_MOVE(PickUp(piece, move.m_to));
 
@@ -475,15 +548,34 @@ void Board::DoCapture(const Move& move, Undo& undo) {
 }
 
 void Board::DoEnPassantCapture(const Move& move) {
-	if (m_isWhiteTurn) {
+	if (IsWhiteTurn()) {
 		SAFE_CALL_WITH_MOVE(PickUp(Piece::BLACK_PAWN, move.m_to.ShiftSouth()));
 	} else {
 		SAFE_CALL_WITH_MOVE(PickUp(Piece::WHITE_PAWN, move.m_to.ShiftNorth()));
 	}
 }
 
+void Board::DoDoublePawnPush(const Move& move) {
+	// Only bother setting the en passant square if there is a pawn that could capture because
+	// of it. This is relevant when you consider three-fold repetition. An en passant square which
+	// does not grant any new possible moves is not sufficient to tell two positions apart, meaning
+	// we should *not* include it. This is mostly important because our hash helps us do three-fold
+	// repetition detection, so we should not be hashing for an irrelevant en passant square.
+
+	if (IsWhiteTurn()) {
+		Bitboard blackPawns = GetPieceBitboard(Piece::BLACK_PAWN);
+		if ((blackPawns & move.m_to.ShiftWest()).Any() || (blackPawns & move.m_to.ShiftEast()).Any() )
+			SetEnPassantSquare(move.m_from.ShiftNorth());
+	}
+	else {
+		Bitboard whitePawns = GetPieceBitboard(Piece::WHITE_PAWN);
+		if ((whitePawns & move.m_to.ShiftWest()).Any() || (whitePawns & move.m_to.ShiftEast()).Any() )
+			SetEnPassantSquare(move.m_from.ShiftSouth());
+	}
+}
+
 void Board::MakeCastleMove(const Move& move) {
-	if (m_isWhiteTurn) {
+	if (IsWhiteTurn()) {
 		bool isKingside = (move.m_to == G1_MASK);
 		if (isKingside) {
 			SAFE_CALL_WITH_MOVE(PickUp(Piece::WHITE_KING, E1_MASK));
@@ -518,18 +610,18 @@ void Board::MakeCastleMove(const Move& move) {
 }
 
 void Board::MakePromotionMove(const Move& move) {
-	Piece pawn = m_isWhiteTurn ? Piece::WHITE_PAWN : Piece::BLACK_PAWN;
+	Piece pawn = IsWhiteTurn() ? Piece::WHITE_PAWN : Piece::BLACK_PAWN;
 	SAFE_CALL_WITH_MOVE(PickUp(pawn, move.m_from));
 	SAFE_CALL_WITH_MOVE(PutDown(move.m_promotionPiece, move.m_to));
 }
 
 void Board::MakeNormalMove(const Move& move) {
-	Piece piece = m_isWhiteTurn ? GetWhitePieceAtSquare(move.m_from) : GetBlackPieceAtSquare(move.m_from);
+	Piece piece = IsWhiteTurn() ? GetWhitePieceAtSquare(move.m_from) : GetBlackPieceAtSquare(move.m_from);
 	SAFE_CALL_WITH_MOVE(PickUp(piece, move.m_from));
 	SAFE_CALL_WITH_MOVE(PutDown(piece, move.m_to));
 
 	// Turn off castling if applicable
-	if (m_isWhiteTurn) {
+	if (IsWhiteTurn()) {
 		if (GetCastlePermission(CastlePermission::WHITE_KINGSIDE) && (move.m_from == E1_MASK || move.m_from == H1_MASK)) {
 			SetCastlePermission(CastlePermission::WHITE_KINGSIDE, false);
 		}
@@ -563,8 +655,8 @@ void Board::UndoMove(const Move& move, const Undo& undo) {
 		UndoEnPassantCapture(move);
 	}
 
-	m_enPassantSquare = undo.m_enPassantSquare;
-	m_castlePermissions = undo.m_castlePermissions;
+	SetEnPassantSquare(undo.m_enPassantSquare);
+	SetCastlePermissions(undo.m_castlePermissions);
 
 #if DEBUG
 	CheckKingCount(move);
@@ -576,7 +668,7 @@ void Board::UndoCapture(const Move& move, const Undo& undo) {
 }
 
 void Board::UndoEnPassantCapture(const Move& move) {
-	if (m_isWhiteTurn) {
+	if (IsWhiteTurn()) {
 		SAFE_CALL_WITH_MOVE(PutDown(Piece::BLACK_PAWN, move.m_to.ShiftSouth()));
 	} else {
 		SAFE_CALL_WITH_MOVE(PutDown(Piece::WHITE_PAWN, move.m_to.ShiftNorth()));
@@ -584,37 +676,7 @@ void Board::UndoEnPassantCapture(const Move& move) {
 }
 
 void Board::UndoCastleMove(const Move& move) {
-	// Remember that is it is currently white turn, that means it was black's
-	// turn when they castled, so undo black castle move
-	// if (m_isWhiteTurn) {
-	// 	bool isKingside = (move.m_to == G8_MASK);
-	// 	if (isKingside) {
-	// 		SAFE_CALL_WITH_MOVE(PickUp(Piece::BLACK_KING, G8_MASK));
-	// 		SAFE_CALL_WITH_MOVE(PutDown(Piece::BLACK_KING, E8_MASK));
-	// 		SAFE_CALL_WITH_MOVE(PickUp(Piece::BLACK_ROOK, F8_MASK));
-	// 		SAFE_CALL_WITH_MOVE(PutDown(Piece::BLACK_ROOK, H8_MASK));
-	// 	} else {
-	// 		SAFE_CALL_WITH_MOVE(PickUp(Piece::BLACK_KING, C8_MASK));
-	// 		SAFE_CALL_WITH_MOVE(PutDown(Piece::BLACK_KING, E8_MASK));
-	// 		SAFE_CALL_WITH_MOVE(PickUp(Piece::BLACK_ROOK, D8_MASK));
-	// 		SAFE_CALL_WITH_MOVE(PutDown(Piece::BLACK_ROOK, A8_MASK));
-	// 	}
-	// } else {
-	// 	bool isKingside = (move.m_to == G1_MASK);
-	// 	if (isKingside) {
-	// 		SAFE_CALL_WITH_MOVE(PickUp(Piece::WHITE_KING, G1_MASK));
-	// 		SAFE_CALL_WITH_MOVE(PutDown(Piece::WHITE_KING, E1_MASK));
-	// 		SAFE_CALL_WITH_MOVE(PickUp(Piece::WHITE_ROOK, F1_MASK));
-	// 		SAFE_CALL_WITH_MOVE(PutDown(Piece::WHITE_ROOK, H1_MASK));
-	// 	} else {
-	// 		SAFE_CALL_WITH_MOVE(PickUp(Piece::WHITE_KING, C1_MASK));
-	// 		SAFE_CALL_WITH_MOVE(PutDown(Piece::WHITE_KING, E1_MASK));
-	// 		SAFE_CALL_WITH_MOVE(PickUp(Piece::WHITE_ROOK, D1_MASK));
-	// 		SAFE_CALL_WITH_MOVE(PutDown(Piece::WHITE_ROOK, A1_MASK));
-	// 	}
-	// }
-
-	if (m_isWhiteTurn) {
+	if (IsWhiteTurn()) {
 		bool isKingside = (move.m_to == G1_MASK);
 		if (isKingside) {
 			SAFE_CALL_WITH_MOVE(PickUp(Piece::WHITE_KING, G1_MASK));
@@ -644,14 +706,14 @@ void Board::UndoCastleMove(const Move& move) {
 }
 
 void Board::UndoPromotionMove(const Move& move, const Undo& undo) {
-	Piece pawn = m_isWhiteTurn ? Piece::WHITE_PAWN : Piece::BLACK_PAWN;
+	Piece pawn = IsWhiteTurn() ? Piece::WHITE_PAWN : Piece::BLACK_PAWN;
 
 	SAFE_CALL_WITH_MOVE(PickUp(move.m_promotionPiece, move.m_to));
 	SAFE_CALL_WITH_MOVE(PutDown(pawn, move.m_from));
 }
 
 void Board::UndoNormalMove(const Move& move) {
-	Piece piece = m_isWhiteTurn ? GetWhitePieceAtSquare(move.m_to) : GetBlackPieceAtSquare(move.m_to);
+	Piece piece = IsWhiteTurn() ? GetWhitePieceAtSquare(move.m_to) : GetBlackPieceAtSquare(move.m_to);
 
 	SAFE_CALL_WITH_MOVE(PickUp(piece, move.m_to));
 	SAFE_CALL_WITH_MOVE(PutDown(piece, move.m_from));
@@ -681,6 +743,10 @@ std::ostream& operator<<(std::ostream& os, const Board& board) {
 			col = 0;
 		}
 	}
+
+	Square enPassant = board.m_enPassantSquare.ToSquare();
+	if (enPassant != Square::NONE)
+		os << enPassant << '\n';
 
 	return os;
 }

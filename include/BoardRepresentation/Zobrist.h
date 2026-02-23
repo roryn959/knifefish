@@ -10,7 +10,7 @@
 #include "BoardRepresentation/Square.h"
 
 typedef uint64_t Hash;
-typedef std::array<Hash, static_cast<size_t>(Square::NUMBER_OF_SQUARES)> PieceHashValues;
+typedef std::array<Hash, static_cast<size_t>(Square::COUNT)> PieceHashValues;
 typedef std::array<PieceHashValues, Piece::NUM_PIECES> PieceHashValuesList;
 
 
@@ -19,8 +19,9 @@ public:
 	Zobrist();
 
 	inline Hash GetHash() const noexcept { return m_hash; } 
+	inline void ResetHash() noexcept { m_hash = 0ULL; }
 
-	void ApplyHash(Piece piece, Square square);
+	void ApplyPieceHash(Piece piece, Square square);
 	void ApplyCastleHash(CastlePermission castlePermission);
 	void ApplyEnPassantHash(Square square);
 	void ApplyWhiteTurnHash();
@@ -28,7 +29,7 @@ public:
 private:
 	PieceHashValuesList 												m_pieceHashes;
 	std::array<Hash, static_cast<size_t>(CastlePermission::COUNT)> 		m_castleHashes;
-	std::array<Hash, static_cast<size_t>(Square::NUMBER_OF_SQUARES)> 	m_enPassantHashes;
+	std::array<Hash, static_cast<size_t>(Square::COUNT)> 				m_enPassantHashes;
 	Hash																m_whiteTurnHash;
 
 	Hash m_hash;

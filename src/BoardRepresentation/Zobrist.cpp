@@ -10,7 +10,7 @@ Zobrist::Zobrist() :
 	std::mt19937_64 rng(69420);
 
 	#define X(piece)																\
-	for (int i = 0; i < static_cast<size_t>(Square::NUMBER_OF_SQUARES); ++i) {		\
+	for (int i = 0; i < static_cast<size_t>(Square::COUNT); ++i) {		\
 		m_pieceHashes[Piece::piece][i] = rng(); 									\
 	}																				\
 
@@ -22,18 +22,18 @@ Zobrist::Zobrist() :
 	#undef X
 
 
-	for (int i = static_cast<size_t>(Square::h2); i < static_cast<size_t>(Square::a2); ++i) {
+	for (int i = static_cast<size_t>(Square::h3); i <= static_cast<size_t>(Square::a3); ++i) {
 		m_enPassantHashes[i] = rng();
 	}
 
-	for (int i = static_cast<size_t>(Square::h7); i < static_cast<size_t>(Square::a7); ++i) {
+	for (int i = static_cast<size_t>(Square::h6); i <= static_cast<size_t>(Square::a6); ++i) {
 		m_enPassantHashes[i] = rng();
 	}
 
 	m_whiteTurnHash = rng();
 }
 
-void Zobrist::ApplyHash(Piece piece, Square square) {
+void Zobrist::ApplyPieceHash(Piece piece, Square square) {
 #if DEBUG
 	if (piece == Piece::EMPTY) {
 		std::cerr << "Error - attempting to hash empty piece on square " << SquareToString(square) << '\n';
@@ -51,6 +51,8 @@ void Zobrist::ApplyCastleHash(CastlePermission castlePermission) {
 }
 
 void Zobrist::ApplyEnPassantHash(Square square) {
+	if (square == Square::NONE) return;
+
 #if DEBUG
 	if (m_enPassantHashes[static_cast<size_t>(square)] == 0) {
 		std::cerr << "Error - attempting to hash invalid square " << SquareToString(square) << '\n';

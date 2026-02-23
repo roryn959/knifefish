@@ -83,6 +83,12 @@ public:
 
 	constexpr inline uint64_t GetBoard() const noexcept { return m_board; }
 
+	constexpr inline Square ToSquare() const noexcept {
+		if (!m_board)
+			return Square::NONE;
+		return static_cast<Square>(__builtin_ctzll(m_board));
+	}
+
 	constexpr inline Bitboard PopLsb() noexcept {
 		Bitboard lsb = m_board & -m_board;
 		m_board &= m_board - 1;
@@ -90,15 +96,7 @@ public:
 	}
 
 	constexpr inline int PopCount() const noexcept {
-		Bitboard bb = m_board;
-		
-		int count = 0;
-		while (bb.Any()) {
-			bb.PopLsb();
-			++count;
-		}
-
-		return count;
+		return __builtin_popcountll(m_board);
 	}
 
 	constexpr inline Bitboard& 	operator<<=(int s) 						noexcept	{ m_board <<= s; return *this; }

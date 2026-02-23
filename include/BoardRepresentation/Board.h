@@ -6,6 +6,7 @@
 #include "Config.h"
 #include "BoardRepresentation/Pieces.h"
 #include "BoardRepresentation/Types.h"
+#include "BoardRepresentation/Zobrist.h"
 #include "Engine/Move.h"
 #include "Engine/Undo.h"
 
@@ -31,16 +32,14 @@ do {																				\
 #define SAFE_CALL_WITH_MOVE(expr) (void) expr
 #endif
 
+typedef std::array<bool, static_cast<size_t>(CastlePermission::COUNT)> CastlePermissionsList;
+
 
 class Board {
 public:
 	Board() = default;
 
-	inline bool IsWhiteTurn() const noexcept { return m_isWhiteTurn; }
-	inline void SwitchTurn() noexcept { m_isWhiteTurn = !m_isWhiteTurn; }
-
-	inline bool GetCastlePermission(CastlePermission castlePermission) const noexcept { return m_castlePermissions[static_cast<size_t>(castlePermission)]; }
-	inline void SetCastlePermission(CastlePermission castlePermission, bool permitted) noexcept { m_castlePermissions[static_cast<size_t>(castlePermission)] = permitted; }
+	void SetUpStartPosition();
 
 	bool IsAttackedByWhite(Bitboard squares) const;
 	bool IsAttackedByBlack(Bitboard squares) const;
@@ -53,13 +52,21 @@ public:
 	Piece GetWhitePieceAtSquare(Bitboard bb);
 	Piece GetBlackPieceAtSquare(Bitboard bb);
 
-	inline Bitboard GetEnPassantSquare() const noexcept { return m_enPassantSquare; }
-
 	Bitboard GetWhiteAttackSet() const;
 	Bitboard GetBlackAttackSet() const;
 
-	void Initialise();
-	void SetUpStartPosition();
+	Hash GetHash() const noexcept { return m_zobrist.GetHash(); }
+	void RebuildHash();
+
+	inline bool GetCastlePermission(CastlePermission castlePermission) const noexcept { return m_castlePermissions[static_cast<size_t>(castlePermission)]; }
+	void SetCastlePermission(CastlePermission castlePermission, bool permitted) noexcept;
+	void SetCastlePermissions(std::array<bool, static_cast<size_t>(CastlePermission::COUNT)> castlePermissions) noexcept;
+
+	inline Bitboard GetEnPassantSquare() const noexcept { return m_enPassantSquare; }
+	void SetEnPassantSquare(Bitboard bb) noexcept;
+
+	inline bool IsWhiteTurn() const noexcept { return m_isWhiteTurn; }
+	void SwitchTurn() noexcept;
 
 	Undo MakeMove(const Move& move);
 	void UndoMove(const Move& move, const Undo& undo);
@@ -77,6 +84,7 @@ private:
 
 	void DoCapture(const Move& move, Undo& undo);
 	void DoEnPassantCapture(const Move& move);
+	void DoDoublePawnPush(const Move& move);
 	void MakeCastleMove(const Move& move);
 	void MakePromotionMove(const Move& move);
 	void MakeNormalMove(const Move& move);
@@ -88,7 +96,6 @@ private:
 	void UndoNormalMove(const Move& move);
 
 	bool PickUp(Piece piece, Bitboard bb);
-
 	bool PutDown(Piece piece, Bitboard bb);
 
 #if DEBUG
@@ -100,4 +107,6 @@ private:
 	std::array<bool, static_cast<size_t>(CastlePermission::COUNT)> m_castlePermissions;
 	Bitboard m_enPassantSquare;
 	bool m_isWhiteTurn;
+
+	Zobrist m_zobrist;
 };

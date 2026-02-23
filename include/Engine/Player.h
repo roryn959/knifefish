@@ -14,10 +14,13 @@
 
 #include "Engine/Move.h"
 #include "Engine/MoveGenerator.h"
+#include "Engine/TranspositionTable.h"
 #include "Engine/Undo.h"
 
 
-constexpr std::array<int, 12> PIECE_VALUES = { 100, 320, 330, 500, 900, 20000, -100, -320, -330, -500, -900, -20000 };
+constexpr int16_t MATE_SCORE { 30'000 };
+constexpr int16_t MAX_SCORE { 32'000 };
+constexpr std::array<int, 12> PIECE_VALUES = { 100, 320, 330, 500, 900, 10000, -100, -320, -330, -500, -900, -10000 };
 
 constexpr std::array<int, 64> FlippedPst(const std::array<int, static_cast<size_t>(Square::COUNT)>& pst) {
 	std::array<int, static_cast<size_t>(Square::COUNT)> flipped;
@@ -120,23 +123,25 @@ class Player {
 public:
 	Player(Board& board);
 
-	int Evaluate();
-	Move GoDepth(int depth);
-	int RootPerft(int depth);
+	int16_t Evaluate();
+	Move GoDepth(int8_t depth);
+	int RootPerft(int8_t depth);
 
 private:
 	bool IsCheckmate();
 
-	Move IterativeDeepening(int maxDepth);
+	Move IterativeDeepening(int8_t maxDepth);
 
-	Move RootNegamax(int depth, const Move& movePv);
-	int Negamax(int depth, int alpha, int beta);
-	int Perft(int depth);
+	Move RootNegamax(int8_t depth, const Move& movePv);
+	int16_t Negamax(int8_t depth, int16_t alpha, int16_t beta);
+	int Perft(int8_t depth);
 
 #if DEBUG
 	int m_nodesSearched;
+	int m_transpositionsHit;
 #endif
 
 	Board& m_board;
 	MoveGenerator m_moveGenerator;
+	TranspositionTable m_transpositionTable;
 };

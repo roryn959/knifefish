@@ -22,7 +22,7 @@ void Interface::ListenForConnection() {
 			std::cout << "uciok\n";
 			break;
 		} else {
-			std::cerr << "Log: Input was unexpected";
+			std::cerr << "Log: Input was unexpected\n";
 		}
 	}
 }
@@ -66,6 +66,23 @@ void Interface::ListenForCommands() {
 			continue;
 		}
 
+		if (input == "hash") {
+			std::cout << m_board.GetHash() << '\n';
+			continue;
+		}
+
+		if (input == "rebuildhash") {
+			Hash oldHash = m_board.GetHash();
+			m_board.RebuildHash();
+			Hash newHash = m_board.GetHash();
+			if (oldHash != newHash) {
+				std::cerr << "Error: Hash inconsistency found on hash rebuild.\n";
+				std::exit(1);
+			}
+			std::cout << newHash << '\n';
+			continue;
+		}
+
 		if (input == "quit") {
 			time_t connectionTime = time(nullptr);
 			std::cerr << "Log: Connection closed at " << ctime(&connectionTime) << '\n';
@@ -73,7 +90,6 @@ void Interface::ListenForCommands() {
 		}
 
 		if (input == "ucinewgame") {
-			m_board.Initialise();
 			continue;
 		}
 

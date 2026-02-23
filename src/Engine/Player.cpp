@@ -8,15 +8,16 @@ Player::Player(Board& board) :
 	m_nodesSearched{0},
 #endif
 	m_board{board},
-	m_moveGenerator{m_board}
+	m_moveGenerator{m_board},
+	m_transpositionTable{}
 {}
 
-Move Player::GoDepth(int depth) {
+Move Player::GoDepth(int8_t depth) {
 	return IterativeDeepening(depth);
 }
 
-int Player::Evaluate() {
-	int eval = 0;
+int16_t Player::Evaluate() {
+	int16_t eval = 0;
 
 	Bitboard piecePositions;
 
@@ -34,7 +35,7 @@ int Player::Evaluate() {
 	return m_board.IsWhiteTurn() ? eval : -eval;
 }
 
-Move Player::IterativeDeepening(int maxDepth) {
+Move Player::IterativeDeepening(int8_t maxDepth) {
 	// Initialise garbage move that will never clash with anything
 	Move bestMove{ A1_MASK, A1_MASK };
 
@@ -55,6 +56,7 @@ Move Player::IterativeDeepening(int maxDepth) {
 
 		std::cerr << "Log: Nodes searched: " << m_nodesSearched << '\n';
 		std::cerr << "Log: Search speed (nps): " << m_nodesSearched / searchTimeS << '\n';
+		std::cerr << "Log: Transpositions hit: " << m_transpositionsHit << '\n';
 		std::cerr << "Log: Search time (s): " << searchTimeS << "\n\n";
 #endif
 	}
@@ -62,10 +64,11 @@ Move Player::IterativeDeepening(int maxDepth) {
 	return bestMove;
 }
 
-Move Player::RootNegamax(int depth, const Move& movePv) {
+Move Player::RootNegamax(int8_t depth, const Move& movePv) {
 #if DEBUG
 	m_nodesSearched = 1;
-	std::cerr << "Log: Calling root Negamax with depth " << depth << '\n';
+	m_transpositionsHit = 0;
+	std::cerr << "Log: Calling root Negamax with depth " << (int) depth << '\n';
 #endif
 
 	std::vector<Move> moves = m_moveGenerator.GenerateLegalMoves();
@@ -81,13 +84,13 @@ Move Player::RootNegamax(int depth, const Move& movePv) {
 	}
 
 	Move bestMove;
-	int bestScore = -1'000'000;
-	int alpha = -1'000'000;
-	int beta = 1'000'000;
+	int16_t bestScore = -MATE_SCORE;
+	int16_t alpha = -MAX_SCORE;
+	int16_t beta = MAX_SCORE;
 
 	for (const Move& move : moves) {
 		Undo undo = m_board.MakeMove(move);
-		int score = -Negamax(depth - 1, -beta, -alpha);
+		int16_t score = -Negamax(depth - 1, -beta, -alpha);
 		m_board.UndoMove(move, undo);
 
 		if (score > bestScore) {
@@ -108,12 +111,39 @@ Move Player::RootNegamax(int depth, const Move& movePv) {
 }
 
 bool Player::IsCheckmate() {
+	// This function assumes it is called from a context where there are no possible moves for the side to play
 	if (m_board.IsWhiteTurn())
 		return m_board.IsAttackedByBlack(m_board.GetPieceBitboard(Piece::WHITE_KING));
 	return m_board.IsAttackedByWhite(m_board.GetPieceBitboard(Piece::BLACK_KING));
 }
 
-int Player::Negamax(int depth, int alpha, int beta) {
+int16_t Player::Negamax(int8_t depth, int16_t alpha, int16_t beta) {
+	Hash hash = m_board.GetHash();
+	const TranspositionTableEntry* pEntry = m_transpositionTable.GetEntry(hash);
+
+	if ((pEntry != nullptr) && (pEntry->m_depth >= depth)) {
+		switch (pEntry->m_evaluationType) {
+			case EvaluationType::EXACT: {
+#if DEBUG
+				++m_transpositionsHit;
+#endif
+				return pEntry->m_score;
+			}
+			case EvaluationType::LOWER_BOUND: {
+				if (pEntry->m_score >= beta)
+					return pEntry->m_score;
+				alpha = std::max(alpha, pEntry->m_score);
+				break;
+			}
+			case EvaluationType::UPPER_BOUND: {
+				if (pEntry->m_score <= alpha)
+					return pEntry->m_score;
+				beta = std::min(beta, pEntry->m_score);
+				break;
+			}
+		}
+	}
+
 #if DEBUG
 	++m_nodesSearched;
 #endif
@@ -122,38 +152,54 @@ int Player::Negamax(int depth, int alpha, int beta) {
 
 	if (moves.size() == 0) {
 		if (IsCheckmate())
-			return -100'000;
+			return -MATE_SCORE;
 		return 0;
 	}
 
 	if (depth == 0)
 		return Evaluate();
 
-	int bestScore = -100'000;
+	int16_t bestScore = -MAX_SCORE;
+	Move bestMove;
+	EvaluationType evaluationType = EvaluationType::UPPER_BOUND;
 
 	for (const Move& move : moves) {
 		// In this context, alpha is the score we (max) are currently guaranteed. Beta is the score the other guy (min) is guaranteed.
 		// So when we call deeper, we swap them and negate them because the role of maximiser is switched, and the scores should be viewed from the other way round.
 		Undo undo = m_board.MakeMove(move);
-		int score = -Negamax(depth - 1, -beta, -alpha);
+		int16_t score = -Negamax(depth - 1, -beta, -alpha);
 		m_board.UndoMove(move, undo);
 
 		if (score > bestScore) {
 			bestScore = score;
-			if (score > alpha) {
-				alpha = score;
+			bestMove = move;
+			if (bestScore > alpha) {
+				alpha = bestScore;
+				evaluationType = EvaluationType::EXACT;
 			}
+
 		}
 
 		// The score we (max) get is better for us than the score the other guy (min) is already guaranteed, so he will never take it! Stop searching
 		if (score >= beta) {
+			evaluationType = EvaluationType::LOWER_BOUND;
 			break;
 		}
 	}
+
+	TranspositionTableEntry entry {
+		hash,
+		bestScore,
+		depth,
+		evaluationType
+	};
+
+	m_transpositionTable.SetEntry(hash, entry);
+
 	return bestScore;
 }
 
-int Player::RootPerft(int depth) {
+int Player::RootPerft(int8_t depth) {
 #if DEBUG
 	auto startTime = std::chrono::system_clock::now();
 #endif
@@ -192,7 +238,7 @@ int Player::RootPerft(int depth) {
 	return overallTotal;
 }
 
-int Player::Perft(int depth) {
+int Player::Perft(int8_t depth) {
 	if (depth == 0)
 		return 1;
 
