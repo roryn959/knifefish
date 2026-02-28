@@ -2,7 +2,8 @@
 
 
 MoveGenerator::MoveGenerator(Board& board) :
-	m_board{board}
+	m_board{board},
+	m_magicBitboardHelper{}
 {}
 
 std::vector<Move> MoveGenerator::GenerateLegalMoves() {
@@ -38,7 +39,7 @@ std::vector<Move> MoveGenerator::FilterOutIllegalWhiteMoves(std::vector<Move>& m
 		Undo undo = m_board.MakeMove(move);
 
 		Bitboard king = m_board.GetPieceBitboard(Piece::WHITE_KING);
-		if (!m_board.IsAttackedByBlack(king))
+		if (!IsAttackedByBlack(king))
 			legalMoves.push_back(move);
 		
 		m_board.UndoMove(move, undo);
@@ -54,7 +55,7 @@ std::vector<Move> MoveGenerator::FilterOutIllegalBlackMoves(std::vector<Move>& m
 		Undo undo = m_board.MakeMove(move);
 
 		Bitboard king = m_board.GetPieceBitboard(Piece::BLACK_KING);
-		if (!m_board.IsAttackedByWhite(king))
+		if (!IsAttackedByWhite(king))
 			legalMoves.push_back(move);
 		
 		m_board.UndoMove(move, undo);
@@ -93,7 +94,7 @@ std::vector<Move> MoveGenerator::GeneratePseudoMoves() {
 void MoveGenerator::PrepareWhiteMoveGeneration() {
 	m_friendlyPieces = m_board.GetWhitePieceBitboard();
 	m_enemyPieces = m_board.GetBlackPieceBitboard();
-	m_enemyAttackSet = m_board.GetBlackAttackSet();
+	m_enemyAttackSet = GetBlackAttackSet();
 
 	m_pawns = m_board.GetPieceBitboard(Piece::WHITE_PAWN);
 	m_knights = m_board.GetPieceBitboard(Piece::WHITE_KNIGHT);
@@ -106,7 +107,7 @@ void MoveGenerator::PrepareWhiteMoveGeneration() {
 void MoveGenerator::PrepareBlackMoveGeneration() {
 	m_friendlyPieces = m_board.GetBlackPieceBitboard();
 	m_enemyPieces = m_board.GetWhitePieceBitboard();
-	m_enemyAttackSet = m_board.GetWhiteAttackSet();
+	m_enemyAttackSet = GetWhiteAttackSet();
 
 	m_pawns = m_board.GetPieceBitboard(Piece::BLACK_PAWN);
 	m_knights = m_board.GetPieceBitboard(Piece::BLACK_KNIGHT);
@@ -642,6 +643,9 @@ void MoveGenerator::GenerateWhiteCastleMoves(std::vector<Move>& moves) {
 }
 
 void MoveGenerator::GenerateBlackCastleMoves(std::vector<Move>& moves) {
+
+
+
 	if (m_board.GetCastlePermission(CastlePermission::BLACK_KINGSIDE)) {
 		bool isKingsideClear = (m_occupiedSquares & BLACK_KINGSIDE_CASTLE_SPACE_MASK).Empty();
 		bool isNotThroughCheck = (m_enemyAttackSet & BLACK_KINGSIDE_CASTLE_CHECKS_MASK).Empty();
@@ -657,4 +661,167 @@ void MoveGenerator::GenerateBlackCastleMoves(std::vector<Move>& moves) {
 			moves.push_back(Move{m_king, C8_MASK, Piece::EMPTY, false, false, false, true});
 		}
 	}
+}
+
+bool MoveGenerator::IsAttackedByWhite(Bitboard square) {
+	Bitboard whiteAttackSet = GetWhiteAttackSet();
+	return (whiteAttackSet & square).Any();
+}
+
+bool MoveGenerator::IsAttackedByBlack(Bitboard square) {
+	Bitboard blackAttackSet = GetBlackAttackSet();
+	return (blackAttackSet & square).Any();
+}
+
+Bitboard MoveGenerator::GetWhiteAttackSet() {
+	Bitboard allPieces = m_board.GetAllPieceBitboard();
+	Bitboard emptySquares = ~allPieces;
+
+	Bitboard pawns = m_board.GetPieceBitboard(Piece::WHITE_PAWN);
+	Bitboard knights = m_board.GetPieceBitboard(Piece::WHITE_KNIGHT);
+	Bitboard bishops = m_board.GetPieceBitboard(Piece::WHITE_BISHOP);
+	Bitboard rooks = m_board.GetPieceBitboard(Piece::WHITE_ROOK);
+	Bitboard queens = m_board.GetPieceBitboard(Piece::WHITE_QUEEN);
+	Bitboard king = m_board.GetPieceBitboard(Piece::WHITE_KING);
+
+	Bitboard attackSet = 0ULL;
+
+	attackSet |= GetWhitePawnAttackSet(pawns);
+	attackSet |= GetKnightAttackSet(knights);
+	attackSet |= GetBishopAttackSet(bishops, allPieces);
+	attackSet |= GetRookAttackSet(rooks, allPieces);
+	attackSet |= GetQueenAttackSet(queens, allPieces);
+	attackSet |= GetKingAttackSet(king);
+
+	return attackSet;
+}
+
+Bitboard MoveGenerator::GetBlackAttackSet() {
+	Bitboard allPieces = m_board.GetAllPieceBitboard();
+	Bitboard emptySquares = ~allPieces;
+
+	Bitboard pawns = m_board.GetPieceBitboard(Piece::BLACK_PAWN);
+	Bitboard knights = m_board.GetPieceBitboard(Piece::BLACK_KNIGHT);
+	Bitboard bishops = m_board.GetPieceBitboard(Piece::BLACK_BISHOP);
+	Bitboard rooks = m_board.GetPieceBitboard(Piece::BLACK_ROOK);
+	Bitboard queens = m_board.GetPieceBitboard(Piece::BLACK_QUEEN);
+	Bitboard king = m_board.GetPieceBitboard(Piece::BLACK_KING);
+
+	Bitboard attackSet = 0ULL;
+
+	attackSet |= GetBlackPawnAttackSet(pawns);
+	attackSet |= GetKnightAttackSet(knights);
+	attackSet |= GetBishopAttackSet(bishops, allPieces);
+	attackSet |= GetRookAttackSet(rooks, allPieces);
+	attackSet |= GetQueenAttackSet(queens, allPieces);
+	attackSet |= GetKingAttackSet(king);
+
+	return attackSet;
+}
+
+Bitboard MoveGenerator::GetWhitePawnAttackSet(Bitboard pawns) {
+	Bitboard attackSet = 0ULL;
+
+	attackSet |= pawns.ShiftNorthWest();
+	attackSet |= pawns.ShiftNorthEast();
+
+	return attackSet;
+}
+
+Bitboard MoveGenerator::GetBlackPawnAttackSet(Bitboard pawns) {
+	Bitboard attackSet = 0ULL;
+
+	if (pawns.Empty()) return attackSet;
+
+	attackSet |= pawns.ShiftSouthWest();
+	attackSet |= pawns.ShiftSouthEast();
+
+	return attackSet;
+}
+
+Bitboard MoveGenerator::GetKnightAttackSet(Bitboard knights) {
+	Bitboard attackSet = 0ULL;
+
+	if (knights.Empty()) return attackSet;
+
+	Bitboard north = knights.ShiftNorth();
+	attackSet |= north.ShiftNorthWest();
+	attackSet |= north.ShiftNorthEast();
+
+	Bitboard east = knights.ShiftEast();
+	attackSet |= east.ShiftNorthEast();
+	attackSet |= east.ShiftSouthEast();
+
+	Bitboard south = knights.ShiftSouth();
+	attackSet |= south.ShiftSouthEast();
+	attackSet |= south.ShiftSouthWest();
+
+	Bitboard west = knights.ShiftWest();
+	attackSet |= west.ShiftNorthWest();
+	attackSet |= west.ShiftSouthWest();
+
+	return attackSet;
+}
+
+Bitboard MoveGenerator::GetBishopAttackSet(Bitboard bishops, Bitboard allPieces) {
+	Bitboard attackSet{0ULL};
+
+	for (Square bishop : bishops) {
+		Bitboard occupancyMask = GetDiagonalOccupancyMask(bishop);
+
+		Bitboard occupancy = occupancyMask & allPieces;
+
+		attackSet |= m_magicBitboardHelper.GetDiagonalAttacks(bishop, occupancy);
+	}
+
+	return attackSet;
+}
+
+Bitboard MoveGenerator::GetRookAttackSet(Bitboard rooks, Bitboard allPieces) {
+	Bitboard attackSet{0ULL};
+
+	for (Square rook : rooks) {
+		Bitboard occupancyMask = GetOrthogonalOccupancyMask(rook);
+
+		Bitboard occupancy = occupancyMask & allPieces;
+
+		attackSet |= m_magicBitboardHelper.GetOrthogonalAttacks(rook, occupancy);
+	}
+
+	return attackSet;
+}
+
+Bitboard MoveGenerator::GetQueenAttackSet(Bitboard queens, Bitboard allPieces) {
+	Bitboard attackSet = 0ULL;
+	
+	if (queens.Empty()) return attackSet;
+
+	for (Square queen : queens) {
+		Bitboard orthogonalOccupancyMask = GetOrthogonalOccupancyMask(queen);
+		Bitboard orthogonalOccupancy = orthogonalOccupancyMask & allPieces;
+
+		attackSet |= m_magicBitboardHelper.GetOrthogonalAttacks(queen, orthogonalOccupancy);
+
+		Bitboard diagonalOccupancyMask = GetDiagonalOccupancyMask(queen);
+		Bitboard diagonalOccupancy = diagonalOccupancyMask & allPieces;
+
+		attackSet |= m_magicBitboardHelper.GetDiagonalAttacks(queen, diagonalOccupancy);
+	}
+
+	return attackSet;
+}
+
+Bitboard MoveGenerator::GetKingAttackSet(Bitboard king) {
+	Bitboard attackSet = 0ULL;
+
+	attackSet |= king.ShiftNorth();
+	attackSet |= king.ShiftNorthEast();
+	attackSet |= king.ShiftEast();
+	attackSet |= king.ShiftSouthEast();
+	attackSet |= king.ShiftSouth();
+	attackSet |= king.ShiftSouthWest();
+	attackSet |= king.ShiftWest();
+	attackSet |= king.ShiftNorthWest();
+
+	return attackSet;
 }

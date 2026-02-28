@@ -22,8 +22,9 @@ public:
 	void ListenForConnection();
 	void ListenForCommands();
 
-private:
+	bool ProcessCommand(std::string input);
 
+private:
 	bool Position(std::istringstream& tokenStream);
 	bool Go(std::istringstream& tokenStream);
 	bool Perft(std::istringstream& tokenStream);

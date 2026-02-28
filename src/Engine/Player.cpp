@@ -17,7 +17,7 @@ Move Player::Go(int depth, int wtime, int btime, int winc, int binc, int movesto
 
 	// Set defaults (or otherwise make decisions).
 	if (depth <= 0) depth = 10;
-	int timeAllowedSecs = 10;
+	int timeAllowedSecs = 600;
 
 	Moment deadline = startTime + ms(SecsToMillisecs(timeAllowedSecs));
 	Move bestMove = IterativeDeepening(depth, deadline);
@@ -116,8 +116,8 @@ int16_t Player::RootNegamax(int8_t depth, const Move& movePv, Move& bestMove, Mo
 	}
 
 #if DEBUG
-	std::cerr << "Log: Negamax depth " << depth << " returned an evaluation of " << bestScore << "\n";
-	std::cerr << "Log: Negamax " << depth << " found the best move to be " << bestMove;
+	std::cerr << "Log: Negamax depth " << (int) depth << " returned an evaluation of " << bestScore << "\n";
+	std::cerr << "Log: Negamax " << (int) depth << " found the best move to be " << bestMove << '\n';
 #endif
 
 	return bestScore;
@@ -126,8 +126,8 @@ int16_t Player::RootNegamax(int8_t depth, const Move& movePv, Move& bestMove, Mo
 bool Player::IsCheckmate() {
 	// This function assumes it is called from a context where there are no possible moves for the side to play
 	if (m_board.IsWhiteTurn())
-		return m_board.IsAttackedByBlack(m_board.GetPieceBitboard(Piece::WHITE_KING));
-	return m_board.IsAttackedByWhite(m_board.GetPieceBitboard(Piece::BLACK_KING));
+		return m_moveGenerator.IsAttackedByBlack(m_board.GetPieceBitboard(Piece::WHITE_KING));
+	return m_moveGenerator.IsAttackedByWhite(m_board.GetPieceBitboard(Piece::BLACK_KING));
 }
 
 int16_t Player::Negamax(int8_t depth, int16_t alpha, int16_t beta) {

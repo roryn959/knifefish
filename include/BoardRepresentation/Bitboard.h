@@ -99,6 +99,11 @@ public:
 		return __builtin_popcountll(m_board);
 	}
 
+	constexpr inline Bitboard&	operator-=(Bitboard rhs)				noexcept	{ m_board -= rhs.m_board; return *this; }
+	constexpr inline Bitboard	operator-(Bitboard rhs)			const	noexcept	{ Bitboard tmp = *this; return tmp -= rhs; }
+
+	constexpr inline uint64_t	operator*(uint64_t s)			const	noexcept	{ return m_board * s;  }
+
 	constexpr inline Bitboard& 	operator<<=(int s) 						noexcept	{ m_board <<= s; return *this; }
 	constexpr inline Bitboard	operator<<(int s)				const	noexcept	{ Bitboard tmp = *this; return tmp <<= s; }
 

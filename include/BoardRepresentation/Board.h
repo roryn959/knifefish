@@ -41,9 +41,6 @@ public:
 
 	void SetUpStartPosition();
 
-	bool IsAttackedByWhite(Bitboard squares) const;
-	bool IsAttackedByBlack(Bitboard squares) const;
-
 	inline Bitboard GetPieceBitboard(Piece p) const noexcept { return m_pieceBitboards[p]; }
 	Bitboard GetAllPieceBitboard() const;
 	Bitboard GetWhitePieceBitboard() const;
@@ -51,9 +48,6 @@ public:
 
 	Piece GetWhitePieceAtSquare(Bitboard bb);
 	Piece GetBlackPieceAtSquare(Bitboard bb);
-
-	Bitboard GetWhiteAttackSet() const;
-	Bitboard GetBlackAttackSet() const;
 
 	Hash GetHash() const noexcept { return m_zobrist.GetHash(); }
 	void RebuildHash();
@@ -74,14 +68,6 @@ public:
 	friend std::ostream& operator<<(std::ostream& os, const Board& board);
 
 private:
-	Bitboard GetWhitePawnAttackSet(Bitboard pawns) const;
-	Bitboard GetBlackPawnAttackSet(Bitboard pawns) const;
-	Bitboard GetKnightAttackSet(Bitboard knights) const;
-	Bitboard GetBishopAttackSet(Bitboard bishops, Bitboard emptySquares) const;
-	Bitboard GetRookAttackSet(Bitboard rooks, Bitboard emptySquares) const;
-	Bitboard GetQueenAttackSet(Bitboard queens, Bitboard emptySquares) const;
-	Bitboard GetKingAttackSet(Bitboard king) const;
-
 	void DoCapture(const Move& move, Undo& undo);
 	void DoEnPassantCapture(const Move& move);
 	void DoDoublePawnPush(const Move& move);
