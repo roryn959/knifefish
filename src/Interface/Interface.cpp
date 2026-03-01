@@ -223,7 +223,7 @@ bool Interface::Go(std::istringstream& tokenStream) {
 bool Interface::Perft(std::istringstream& tokenStream) {
 	int depth = -1; 
 	if (!(tokenStream >> depth)) {
-		std::cout << "Error: something went wrong...\n";
+		std::cout << "Error: something went wrong. Check depth was included.\n";
 		return false;
 	}
 

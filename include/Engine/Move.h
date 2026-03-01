@@ -8,8 +8,8 @@
 
 
 struct Move {
-	Bitboard 	m_from;
-	Bitboard 	m_to;
+	Square		m_from;
+	Square		m_to;
 	Piece		m_promotionPiece;
 	bool 		m_isCapture;
 	bool		m_isDoublePawnPush;

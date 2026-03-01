@@ -7,6 +7,40 @@ MoveGenerator::MoveGenerator(Board& board) :
 {}
 
 std::vector<Move> MoveGenerator::GenerateLegalMoves() {
+
+#if DEBUG
+	Hash beforeHash = m_board.GetHash();
+#endif
+
+
+
+
+
+	std::vector<Move> moves;
+
+	Bitboard king = m_board.IsWhiteTurn() ? m_board.GetPieceBitboard(Piece::WHITE_KING) : m_board.GetPieceBitboard(Piece::BLACK_KING);
+
+	
+
+
+
+
+
+
+
+
+#if DEBUG
+	Hash afterHash = m_board.GetHash();
+	if (beforeHash != afterHash) {
+		std::cerr << "Error: Hashing issue detected during move generation\n";
+		std::exit(1);
+	}
+#endif
+
+	return moves;
+}
+
+std::vector<Move> MoveGenerator::OldGenerateLegalMoves() {
 	std::vector<Move> pseudoMoves = GeneratePseudoMoves();
 
 #if DEBUG
@@ -134,12 +168,12 @@ void MoveGenerator::GenerateWhitePawnPushes(std::vector<Move>& moves, Bitboard p
 
 	Bitboard seventhRank = pawn & RANK_7_MASK;
 	if (seventhRank.Any()) {
-		moves.push_back(Move{pawn, northMove, Piece::WHITE_KNIGHT, false, false, false, false});
-		moves.push_back(Move{pawn, northMove, Piece::WHITE_BISHOP, false, false, false, false});
-		moves.push_back(Move{pawn, northMove, Piece::WHITE_ROOK, false, false, false, false});
-		moves.push_back(Move{pawn, northMove, Piece::WHITE_QUEEN, false, false, false, false});
+		moves.push_back(Move{static_cast<Square>(pawn), static_cast<Square>(northMove), Piece::WHITE_KNIGHT, false, false, false, false});
+		moves.push_back(Move{static_cast<Square>(pawn), static_cast<Square>(northMove), Piece::WHITE_BISHOP, false, false, false, false});
+		moves.push_back(Move{static_cast<Square>(pawn), static_cast<Square>(northMove), Piece::WHITE_ROOK, false, false, false, false});
+		moves.push_back(Move{static_cast<Square>(pawn), static_cast<Square>(northMove), Piece::WHITE_QUEEN, false, false, false, false});
 	} else {
-		moves.push_back(Move{pawn, northMove, Piece::EMPTY, false, false, false, false});
+		moves.push_back(Move{static_cast<Square>(pawn), static_cast<Square>(northMove), Piece::EMPTY, false, false, false, false});
 	}
 
 	Bitboard secondRank = pawn & RANK_2_MASK;
@@ -147,7 +181,7 @@ void MoveGenerator::GenerateWhitePawnPushes(std::vector<Move>& moves, Bitboard p
 
 	Bitboard northNorthMove = northMove.ShiftNorth() & m_emptySquares;
 	if (northNorthMove.Any()) {
-		moves.push_back(Move{pawn, northNorthMove, Piece::EMPTY, false, true, false, false});
+		moves.push_back(Move{static_cast<Square>(pawn), static_cast<Square>(northNorthMove), Piece::EMPTY, false, true, false, false});
 	}
 }
 
@@ -157,35 +191,37 @@ void MoveGenerator::GenerateWhitePawnCaptures(std::vector<Move>& moves, Bitboard
 	Bitboard westCaptureMove = push.ShiftWest() & m_enemyPieces;
 	if (westCaptureMove.Any()) {
 		if (seventhRank.Any()) {
-			moves.push_back(Move{pawn, westCaptureMove, Piece::WHITE_KNIGHT, true, false, false, false});
-			moves.push_back(Move{pawn, westCaptureMove, Piece::WHITE_BISHOP, true, false, false, false});
-			moves.push_back(Move{pawn, westCaptureMove, Piece::WHITE_ROOK, true, false, false, false});
-			moves.push_back(Move{pawn, westCaptureMove, Piece::WHITE_QUEEN, true, false, false, false});
+			moves.push_back(Move{static_cast<Square>(pawn), static_cast<Square>(westCaptureMove), Piece::WHITE_KNIGHT, true, false, false, false});
+			moves.push_back(Move{static_cast<Square>(pawn), static_cast<Square>(westCaptureMove), Piece::WHITE_BISHOP, true, false, false, false});
+			moves.push_back(Move{static_cast<Square>(pawn), static_cast<Square>(westCaptureMove), Piece::WHITE_ROOK, true, false, false, false});
+			moves.push_back(Move{static_cast<Square>(pawn), static_cast<Square>(westCaptureMove), Piece::WHITE_QUEEN, true, false, false, false});
 		} else {
-			moves.push_back(Move{pawn, westCaptureMove, Piece::EMPTY, true, false, false, false});
+			moves.push_back(Move{static_cast<Square>(pawn), static_cast<Square>(westCaptureMove), Piece::EMPTY, true, false, false, false});
 		}
 	}
 
 	Bitboard eastCaptureMove = push.ShiftEast() & m_enemyPieces;
 	if (eastCaptureMove.Any()) {
 		if (seventhRank.Any()) {
-			moves.push_back(Move{pawn, eastCaptureMove, Piece::WHITE_KNIGHT, true, false, false, false});
-			moves.push_back(Move{pawn, eastCaptureMove, Piece::WHITE_BISHOP, true, false, false, false});
-			moves.push_back(Move{pawn, eastCaptureMove, Piece::WHITE_ROOK, true, false, false, false});
-			moves.push_back(Move{pawn, eastCaptureMove, Piece::WHITE_QUEEN, true, false, false, false});
+			moves.push_back(Move{static_cast<Square>(pawn), static_cast<Square>(eastCaptureMove), Piece::WHITE_KNIGHT, true, false, false, false});
+			moves.push_back(Move{static_cast<Square>(pawn), static_cast<Square>(eastCaptureMove), Piece::WHITE_BISHOP, true, false, false, false});
+			moves.push_back(Move{static_cast<Square>(pawn), static_cast<Square>(eastCaptureMove), Piece::WHITE_ROOK, true, false, false, false});
+			moves.push_back(Move{static_cast<Square>(pawn), static_cast<Square>(eastCaptureMove), Piece::WHITE_QUEEN, true, false, false, false});
 		} else {
-			moves.push_back(Move{pawn, eastCaptureMove, Piece::EMPTY, true, false, false, false});
+			moves.push_back(Move{static_cast<Square>(pawn), static_cast<Square>(eastCaptureMove), Piece::EMPTY, true, false, false, false});
 		}
 	}
 
-	Bitboard westEnPassantMove = push.ShiftWest() & m_board.GetEnPassantSquare();
+	Bitboard enPassantBB{m_board.GetEnPassantSquare()};
+
+	Bitboard westEnPassantMove = push.ShiftWest() & enPassantBB;
 	if (westEnPassantMove.Any()) {
-		moves.push_back(Move{pawn, westEnPassantMove, Piece::EMPTY, false, false, true, false});
+		moves.push_back(Move{static_cast<Square>(pawn), static_cast<Square>(westEnPassantMove), Piece::EMPTY, false, false, true, false});
 	}
 
-	Bitboard eastEnPassantMove = push.ShiftEast() & m_board.GetEnPassantSquare();
+	Bitboard eastEnPassantMove = push.ShiftEast() & enPassantBB;
 	if (eastEnPassantMove.Any()) {
-		moves.push_back(Move{pawn, eastEnPassantMove, Piece::EMPTY, false, false, true, false});
+		moves.push_back(Move{static_cast<Square>(pawn), static_cast<Square>(eastEnPassantMove), Piece::EMPTY, false, false, true, false});
 	}
 }
 
@@ -206,12 +242,12 @@ void MoveGenerator::GenerateBlackPawnPushes(std::vector<Move>& moves, Bitboard p
 
 	Bitboard secondRank = pawn & RANK_2_MASK;
 	if (secondRank.Any()) {
-		moves.push_back(Move{pawn, southMove, Piece::BLACK_KNIGHT, false, false, false, false});
-		moves.push_back(Move{pawn, southMove, Piece::BLACK_BISHOP, false, false, false, false});
-		moves.push_back(Move{pawn, southMove, Piece::BLACK_ROOK, false, false, false, false});
-		moves.push_back(Move{pawn, southMove, Piece::BLACK_QUEEN, false, false, false, false});
+		moves.push_back(Move{static_cast<Square>(pawn), static_cast<Square>(southMove), Piece::BLACK_KNIGHT, false, false, false, false});
+		moves.push_back(Move{static_cast<Square>(pawn), static_cast<Square>(southMove), Piece::BLACK_BISHOP, false, false, false, false});
+		moves.push_back(Move{static_cast<Square>(pawn), static_cast<Square>(southMove), Piece::BLACK_ROOK, false, false, false, false});
+		moves.push_back(Move{static_cast<Square>(pawn), static_cast<Square>(southMove), Piece::BLACK_QUEEN, false, false, false, false});
 	} else {
-		moves.push_back(Move{pawn, southMove, Piece::EMPTY, false, false, false, false});
+		moves.push_back(Move{static_cast<Square>(pawn), static_cast<Square>(southMove), Piece::EMPTY, false, false, false, false});
 	}
 
 	Bitboard seventhRank = pawn & RANK_7_MASK;
@@ -219,7 +255,7 @@ void MoveGenerator::GenerateBlackPawnPushes(std::vector<Move>& moves, Bitboard p
 
 	Bitboard southSouthMove = southMove.ShiftSouth() & m_emptySquares;
 	if (southSouthMove.Any()) {
-		moves.push_back(Move{pawn, southSouthMove, Piece::EMPTY, false, true, false, false});
+		moves.push_back(Move{static_cast<Square>(pawn), static_cast<Square>(southSouthMove), Piece::EMPTY, false, true, false, false});
 	}
 }
 
@@ -229,399 +265,133 @@ void MoveGenerator::GenerateBlackPawnCaptures(std::vector<Move>& moves, Bitboard
 	Bitboard westCaptureMove = push.ShiftWest() & m_enemyPieces;
 	if (westCaptureMove.Any()) {
 		if (secondRank.Any()) {
-			moves.push_back(Move{pawn, westCaptureMove, Piece::BLACK_KNIGHT, true, false, false, false});
-			moves.push_back(Move{pawn, westCaptureMove, Piece::BLACK_BISHOP, true, false, false, false});
-			moves.push_back(Move{pawn, westCaptureMove, Piece::BLACK_ROOK, true, false, false, false});
-			moves.push_back(Move{pawn, westCaptureMove, Piece::BLACK_QUEEN, true, false, false, false});
+			moves.push_back(Move{static_cast<Square>(pawn), static_cast<Square>(westCaptureMove), Piece::BLACK_KNIGHT, true, false, false, false});
+			moves.push_back(Move{static_cast<Square>(pawn), static_cast<Square>(westCaptureMove), Piece::BLACK_BISHOP, true, false, false, false});
+			moves.push_back(Move{static_cast<Square>(pawn), static_cast<Square>(westCaptureMove), Piece::BLACK_ROOK, true, false, false, false});
+			moves.push_back(Move{static_cast<Square>(pawn), static_cast<Square>(westCaptureMove), Piece::BLACK_QUEEN, true, false, false, false});
 		} else {
-			moves.push_back(Move{pawn, westCaptureMove, Piece::EMPTY, true, false, false, false});
+			moves.push_back(Move{static_cast<Square>(pawn), static_cast<Square>(westCaptureMove), Piece::EMPTY, true, false, false, false});
 		}
 	}
 
 	Bitboard eastCaptureMove = push.ShiftEast() & m_enemyPieces;
 	if (eastCaptureMove.Any()) {
 		if (secondRank.Any()) {
-			moves.push_back(Move{pawn, eastCaptureMove, Piece::BLACK_KNIGHT, true, false, false, false});
-			moves.push_back(Move{pawn, eastCaptureMove, Piece::BLACK_BISHOP, true, false, false, false});
-			moves.push_back(Move{pawn, eastCaptureMove, Piece::BLACK_ROOK, true, false, false, false});
-			moves.push_back(Move{pawn, eastCaptureMove, Piece::BLACK_QUEEN, true, false, false, false});
+			moves.push_back(Move{static_cast<Square>(pawn), static_cast<Square>(static_cast<Square>(eastCaptureMove)), Piece::BLACK_KNIGHT, true, false, false, false});
+			moves.push_back(Move{static_cast<Square>(pawn), static_cast<Square>(static_cast<Square>(eastCaptureMove)), Piece::BLACK_BISHOP, true, false, false, false});
+			moves.push_back(Move{static_cast<Square>(pawn), static_cast<Square>(static_cast<Square>(eastCaptureMove)), Piece::BLACK_ROOK, true, false, false, false});
+			moves.push_back(Move{static_cast<Square>(pawn), static_cast<Square>(static_cast<Square>(eastCaptureMove)), Piece::BLACK_QUEEN, true, false, false, false});
 		} else {
-			moves.push_back(Move{pawn, eastCaptureMove, Piece::EMPTY, true, false, false, false});
+			moves.push_back(Move{static_cast<Square>(pawn), static_cast<Square>(static_cast<Square>(eastCaptureMove)), Piece::EMPTY, true, false, false, false});
 		}
 	}
 
-	Bitboard westEnPassantMove = push.ShiftWest() & m_board.GetEnPassantSquare();
+	Bitboard enPassantBB{m_board.GetEnPassantSquare()};
+
+	Bitboard westEnPassantMove = push.ShiftWest() & enPassantBB;
 	if (westEnPassantMove.Any()) {
-		moves.push_back(Move{pawn, westEnPassantMove, Piece::EMPTY, false, false, true, false});
+		moves.push_back(Move{static_cast<Square>(pawn), static_cast<Square>(westEnPassantMove), Piece::EMPTY, false, false, true, false});
 	}
 
-	Bitboard eastEnPassantMove = push.ShiftEast() & m_board.GetEnPassantSquare();
+	Bitboard eastEnPassantMove = push.ShiftEast() & enPassantBB;
 	if (eastEnPassantMove.Any()) {
-		moves.push_back(Move{pawn, eastEnPassantMove, Piece::EMPTY, false, false, true, false});
+		moves.push_back(Move{static_cast<Square>(pawn), static_cast<Square>(eastEnPassantMove), Piece::EMPTY, false, false, true, false});
 	}
 }
 
 void MoveGenerator::GenerateKnightMoves(std::vector<Move>& moves) {
-	while (m_knights.Any()) {
-		Bitboard knight = m_knights.PopLsb();
+	for (Square knight : m_knights) {
+		if (knight == Square::NONE) continue;
 
-		GenerateKnightHopsNorth(moves, knight);
-		GenerateKnightHopsEast(moves, knight);
-		GenerateKnightHopsSouth(moves, knight);
-		GenerateKnightHopsWest(moves, knight);
-	}
-}
+		Bitboard attackSet = m_magicBitboardHelper.GetKnightAttacks(knight);
 
-void MoveGenerator::GenerateKnightHopsNorth(std::vector<Move>& moves, Bitboard knight) {
-	Bitboard north = (knight << 16);
-
-	if (north.Empty()) return;
-	
-	Bitboard nnw = north.ShiftWest();
-	if ((nnw & m_enemyPieces).Any()) {
-		moves.push_back(Move{knight, nnw, Piece::EMPTY, true, false, false, false});
-	} else if ((nnw & m_emptySquares).Any()) {
-		moves.push_back(Move{knight, nnw, Piece::EMPTY, false, false, false, false});
-	}
-
-	Bitboard nne = north.ShiftEast();
-	if ((nne & m_enemyPieces).Any()) {
-		moves.push_back(Move{knight, nne, Piece::EMPTY, true, false, false, false});
-	} else if ((nne & m_emptySquares).Any()) {
-		moves.push_back(Move{knight, nne, Piece::EMPTY, false, false, false, false});
-	}
-}
-
-void MoveGenerator::GenerateKnightHopsEast(std::vector<Move>& moves, Bitboard knight) {
-	Bitboard east = (knight & NON_FILE_G_OR_H_MASK) >> 2;
-
-	if (east.Empty()) return;
-
-	Bitboard een = east.ShiftNorth();
-	if ((een & m_enemyPieces).Any()) {
-		moves.push_back(Move{knight, een, Piece::EMPTY, true, false, false, false});
-	} else if ((een & m_emptySquares).Any()) {
-		moves.push_back(Move{knight, een, Piece::EMPTY, false, false, false, false});
-	}
-	
-	Bitboard ees = east.ShiftSouth();
-	if ((ees & m_enemyPieces).Any()) {
-		moves.push_back(Move{knight, ees, Piece::EMPTY, true, false, false, false});
-	} else if ((ees & m_emptySquares).Any()) {
-		moves.push_back(Move{knight, ees, Piece::EMPTY, false, false, false, false});
-	}
-}
-
-void MoveGenerator::GenerateKnightHopsSouth(std::vector<Move>& moves, Bitboard knight) {
-	Bitboard south = (knight >> 16);
-
-	if (south.Empty()) return;
-
-	Bitboard ssw = south.ShiftWest();
-	if ((ssw & m_enemyPieces).Any()) {
-		moves.push_back(Move{knight, ssw, Piece::EMPTY, true, false, false, false});
-	} else if ((ssw & m_emptySquares).Any()) {
-		moves.push_back(Move{knight, ssw, Piece::EMPTY, false, false, false, false});
-	}
-
-	Bitboard sse = south.ShiftEast();
-	if ((sse & m_enemyPieces).Any()) {
-		moves.push_back(Move{knight, sse, Piece::EMPTY, true, false, false, false});
-	} else if ((sse & m_emptySquares).Any()) {
-		moves.push_back(Move{knight, sse, Piece::EMPTY, false, false, false, false});
-	}
-}
-
-void MoveGenerator::GenerateKnightHopsWest(std::vector<Move>& moves, Bitboard knight) {
-	Bitboard west = (knight & NON_FILE_A_OR_B_MASK) << 2;
-
-	if (west.Empty()) return;
-
-	Bitboard wwn = west.ShiftNorth();
-	if ((wwn & m_enemyPieces).Any()) {
-		moves.push_back(Move{knight, wwn, Piece::EMPTY, true, false, false, false});
-	} else if ((wwn & m_emptySquares).Any()) {
-		moves.push_back(Move{knight, wwn, Piece::EMPTY, false, false, false, false});
-	}
-	
-	Bitboard wws = west.ShiftSouth();
-	if ((wws & m_enemyPieces).Any()) {
-		moves.push_back(Move{knight, wws, Piece::EMPTY, true, false, false, false});
-	} else if ((wws & m_emptySquares).Any()) {
-		moves.push_back(Move{knight, wws, Piece::EMPTY, false, false, false, false});
-	}
-}
-
-void MoveGenerator::GeneratePieceSlideNorthEast(std::vector<Move>& moves, Bitboard piece) {
-	Bitboard shadow = piece.ShiftNorthEast();
-	while (shadow.Any()) {
-		Bitboard capture = shadow & m_enemyPieces;
-		if (capture.Any()) {
-			moves.push_back(Move{piece, shadow, Piece::EMPTY, true, false, false, false});
-			return;
+		Bitboard normalMoves = attackSet & m_emptySquares;
+		for (Square to : normalMoves) {
+			moves.push_back(Move{knight, to, Piece::EMPTY, false, false, false, false});
 		}
 
-		Bitboard blocker = shadow & m_friendlyPieces;
-		if (blocker.Any()) {
-			return;
+		Bitboard captures = attackSet & m_enemyPieces;
+		for (Square to : captures) {
+			moves.push_back(Move{knight, to, Piece::EMPTY, true, false, false, false});
 		}
-
-		moves.push_back(Move{piece, shadow, Piece::EMPTY, false, false, false, false});
-		shadow = shadow.ShiftNorthEast();
-	}
-}
-
-void MoveGenerator::GeneratePieceSlideSouthEast(std::vector<Move>& moves, Bitboard piece) {
-	Bitboard shadow = piece.ShiftSouthEast();
-	while (shadow.Any()) {
-		Bitboard capture = shadow & m_enemyPieces;
-		if (capture.Any()) {
-			moves.push_back(Move{piece, shadow, Piece::EMPTY, true, false, false, false});
-			return;
-		}
-
-		Bitboard blocker = shadow & m_friendlyPieces;
-		if (blocker.Any()) {
-			return;
-		}
-
-		moves.push_back(Move{piece, shadow, Piece::EMPTY, false, false, false, false});
-		shadow = shadow.ShiftSouthEast();
-	}
-}
-
-void MoveGenerator::GeneratePieceSlideSouthWest(std::vector<Move>& moves, Bitboard piece) {
-	Bitboard shadow = piece.ShiftSouthWest();
-	while (shadow.Any()) {
-		Bitboard capture = shadow & m_enemyPieces;
-		if (capture.Any()) {
-			moves.push_back(Move{piece, shadow, Piece::EMPTY, true, false, false, false});
-			return;
-		}
-
-		Bitboard blocker = shadow & m_friendlyPieces;
-		if (blocker.Any()) {
-			return;
-		}
-
-		moves.push_back(Move{piece, shadow, Piece::EMPTY, false, false, false, false});
-		shadow = shadow.ShiftSouthWest();
-	}
-}
-
-void MoveGenerator::GeneratePieceSlideNorthWest(std::vector<Move>& moves, Bitboard piece) {
-	Bitboard shadow = piece.ShiftNorthWest();
-	while (shadow.Any()) {
-		Bitboard capture = shadow & m_enemyPieces;
-		if (capture.Any()) {
-			moves.push_back(Move{piece, shadow, Piece::EMPTY, true, false, false, false});
-			return;
-		}
-
-		Bitboard blocker = shadow & m_friendlyPieces;
-		if (blocker.Any()) {
-			return;
-		}
-
-		moves.push_back(Move{piece, shadow, Piece::EMPTY, false, false, false, false});
-		shadow = shadow.ShiftNorthWest();
-	}
-}
-
-void MoveGenerator::GeneratePieceSlideNorth(std::vector<Move>& moves, Bitboard piece) {
-	Bitboard shadow = piece.ShiftNorth();
-	while (shadow.Any()) {
-		Bitboard capture = shadow & m_enemyPieces;
-		if (capture.Any()) {
-			moves.push_back(Move{piece, shadow, Piece::EMPTY, true, false, false, false});
-			return;
-		}
-
-		Bitboard blocker = shadow & m_friendlyPieces;
-		if (blocker.Any()) {
-			return;
-		}
-
-		moves.push_back(Move{piece, shadow, Piece::EMPTY, false, false, false, false});
-		shadow = shadow.ShiftNorth();
-	}
-}
-
-void MoveGenerator::GeneratePieceSlideEast(std::vector<Move>& moves, Bitboard piece) {
-	Bitboard shadow = piece.ShiftEast();
-	while (shadow.Any()) {
-		Bitboard capture = shadow & m_enemyPieces;
-		if (capture.Any()) {
-			moves.push_back(Move{piece, shadow, Piece::EMPTY, true, false, false, false});
-			return;
-		}
-
-		Bitboard blocker = shadow & m_friendlyPieces;
-		if (blocker.Any()) {
-			return;
-		}
-
-		moves.push_back(Move{piece, shadow, Piece::EMPTY, false, false, false, false});
-		shadow = shadow.ShiftEast();
-	}
-}
-
-void MoveGenerator::GeneratePieceSlideSouth(std::vector<Move>& moves, Bitboard piece) {
-	Bitboard shadow = piece.ShiftSouth();
-	while (shadow.Any()) {
-		Bitboard capture = shadow & m_enemyPieces;
-		if (capture.Any()) {
-			moves.push_back(Move{piece, shadow, Piece::EMPTY, true, false, false, false});
-			return;
-		}
-
-		Bitboard blocker = shadow & m_friendlyPieces;
-		if (blocker.Any()) {
-			return;
-		}
-
-		moves.push_back(Move{piece, shadow, Piece::EMPTY, false, false, false, false});
-		shadow = shadow.ShiftSouth();
-	}
-}
-
-void MoveGenerator::GeneratePieceSlideWest(std::vector<Move>& moves, Bitboard piece) {
-	Bitboard shadow = piece.ShiftWest();
-	while (shadow.Any()) {
-		Bitboard capture = shadow & m_enemyPieces;
-		if (capture.Any()) {
-			moves.push_back(Move{piece, shadow, Piece::EMPTY, true, false, false, false});
-			return;
-		}
-
-		Bitboard blocker = shadow & m_friendlyPieces;
-		if (blocker.Any()) {
-			return;
-		}
-
-		moves.push_back(Move{piece, shadow, Piece::EMPTY, false, false, false, false});
-		shadow = shadow.ShiftWest();
-	}
-}
-
-void MoveGenerator::GenerateKingNorthMove(std::vector<Move>& moves) {
-	Bitboard north = m_king.ShiftNorth();
-
-	if (north.Empty()) return;
-
-	if ((north & m_enemyPieces).Any()) {
-		moves.push_back(Move{m_king, north, Piece::EMPTY, true, false, false, false});
-	} else if ((north & m_emptySquares).Any()) {
-		moves.push_back(Move{m_king, north, Piece::EMPTY, false, false, false, false});
-	}
-}
-
-void MoveGenerator::GenerateKingEastMoves(std::vector<Move>& moves) {
-	Bitboard east = m_king.ShiftEast();
-
-	if (east.Empty()) return;
-
-	if ((east & m_enemyPieces).Any()) {
-		moves.push_back(Move{m_king, east, Piece::EMPTY, true, false, false, false});
-	} else if ((east & m_emptySquares).Any()) {
-		moves.push_back(Move{m_king, east, Piece::EMPTY, false, false, false, false});
-	}
-
-	Bitboard northEast = east.ShiftNorth();
-	if ((northEast & m_enemyPieces).Any()) {
-		moves.push_back(Move{m_king, northEast, Piece::EMPTY, true, false, false, false});
-	} else if ((northEast & m_emptySquares).Any()) {
-		moves.push_back(Move{m_king, northEast, Piece::EMPTY, false, false, false, false});
-	}
-
-	Bitboard southEast = east.ShiftSouth();
-	if ((southEast & m_enemyPieces).Any()) {
-		moves.push_back(Move{m_king, southEast, Piece::EMPTY, true, false, false, false});
-	} else if ((southEast & m_emptySquares).Any()) {
-		moves.push_back(Move{m_king, southEast, Piece::EMPTY, false, false, false, false});
-	}
-}
-
-void MoveGenerator::GenerateKingSouthMove(std::vector<Move>& moves) {
-	Bitboard south = m_king.ShiftSouth();
-
-	if (south.Empty()) return;
-
-	if ((south & m_enemyPieces).Any()) {
-		moves.push_back(Move{m_king, south, Piece::EMPTY, true, false, false, false});
-	} else if ((south & m_emptySquares).Any()) {
-		moves.push_back(Move{m_king, south, Piece::EMPTY, false, false, false, false});
-	}
-}
-
-void MoveGenerator::GenerateKingWestMoves(std::vector<Move>& moves) {
-	Bitboard west = m_king.ShiftWest();
-
-	if (west.Empty()) return;
-
-	if ((west & m_enemyPieces).Any()) {
-		moves.push_back(Move{m_king, west, Piece::EMPTY, true, false, false, false});
-	} else if ((west & m_emptySquares).Any()) {
-		moves.push_back(Move{m_king, west, Piece::EMPTY, false, false, false, false});
-	}
-
-	Bitboard northWest = west.ShiftNorth();
-	if ((northWest & m_enemyPieces).Any()) {
-		moves.push_back(Move{m_king, northWest, Piece::EMPTY, true, false, false, false});
-	} else if ((northWest & m_emptySquares).Any()) {
-		moves.push_back(Move{m_king, northWest, Piece::EMPTY, false, false, false, false});
-	}
-
-	Bitboard southWest = west.ShiftSouth();
-	if ((southWest & m_enemyPieces).Any()) {
-		moves.push_back(Move{m_king, southWest, Piece::EMPTY, true, false, false, false});
-	} else if ((southWest & m_emptySquares).Any()) {
-		moves.push_back(Move{m_king, southWest, Piece::EMPTY, false, false, false, false});
 	}
 }
 
 void MoveGenerator::GenerateBishopMoves(std::vector<Move>& moves) {
-	while (m_bishops.Any()) {
-		Bitboard bishop = m_bishops.PopLsb();
+	for (Square bishop : m_bishops) {
+		Bitboard occupancyMask = GetDiagonalOccupancyMask(bishop);
+		Bitboard occupancy = occupancyMask & m_occupiedSquares;
 
-		GeneratePieceSlideNorthEast(moves, bishop);
-		GeneratePieceSlideSouthEast(moves, bishop);
-		GeneratePieceSlideSouthWest(moves, bishop);
-		GeneratePieceSlideNorthWest(moves, bishop);
+		Bitboard attackSet = m_magicBitboardHelper.GetDiagonalAttacks(bishop, occupancy);
+
+		Bitboard normalMoves = attackSet & m_emptySquares;
+		for (Square to : normalMoves) {
+			moves.push_back(Move{bishop, to, Piece::EMPTY, false, false, false, false});
+		}
+
+		Bitboard captures = attackSet & m_enemyPieces;
+		for (Square to : captures) {
+			moves.push_back(Move{bishop, to, Piece::EMPTY, true, false, false, false});
+		}
 	}
 }
 
 void MoveGenerator::GenerateRookMoves(std::vector<Move>& moves) {
-	while (m_rooks.Any()) {
-		Bitboard rook = m_rooks.PopLsb();
+	for (Square rook : m_rooks) {
+		Bitboard occupancyMask = GetOrthogonalOccupancyMask(rook);
+		Bitboard occupancy = occupancyMask & m_occupiedSquares;
 
-		GeneratePieceSlideNorth(moves, rook);
-		GeneratePieceSlideEast(moves, rook);
-		GeneratePieceSlideSouth(moves, rook);
-		GeneratePieceSlideWest(moves, rook);
+		Bitboard attackSet = m_magicBitboardHelper.GetOrthogonalAttacks(rook, occupancy);
+
+		Bitboard normalMoves = attackSet & m_emptySquares;
+		for (Square to : normalMoves) {
+			moves.push_back(Move{rook, to, Piece::EMPTY, false, false, false, false});
+		}
+
+		Bitboard captures = attackSet & m_enemyPieces;
+		for (Square to : captures) {
+			moves.push_back(Move{rook, to, Piece::EMPTY, true, false, false, false});
+		}
 	}
 }
 
 void MoveGenerator::GenerateQueenMoves(std::vector<Move>& moves) {
-	while (m_queens.Any()) {
-		Bitboard queen = m_queens.PopLsb();
+	for (Square queen : m_queens) {
+		Bitboard diagonalOccupancyMask = GetDiagonalOccupancyMask(queen);
+		Bitboard diagonalOccupancy = diagonalOccupancyMask & m_occupiedSquares;
+		Bitboard diagonalAttackSet = m_magicBitboardHelper.GetDiagonalAttacks(queen, diagonalOccupancy);
 
-		GeneratePieceSlideNorth(moves, queen);
-		GeneratePieceSlideEast(moves, queen);
-		GeneratePieceSlideSouth(moves, queen);
-		GeneratePieceSlideWest(moves, queen);
-		GeneratePieceSlideNorthEast(moves, queen);
-		GeneratePieceSlideSouthEast(moves, queen);
-		GeneratePieceSlideSouthWest(moves, queen);
-		GeneratePieceSlideNorthWest(moves, queen);
+		Bitboard orthogonalOccupancyMask = GetOrthogonalOccupancyMask(queen);
+		Bitboard orthogonalOccupancy = orthogonalOccupancyMask & m_occupiedSquares;
+		Bitboard orthogonalAttackSet = m_magicBitboardHelper.GetOrthogonalAttacks(queen, orthogonalOccupancy);
+
+		Bitboard attackSet = diagonalAttackSet | orthogonalAttackSet;
+
+		Bitboard normalMoves = attackSet & m_emptySquares;
+		for (Square to : normalMoves) {
+			moves.push_back(Move{queen, to, Piece::EMPTY, false, false, false, false});
+		}
+
+		Bitboard captures = attackSet & m_enemyPieces;
+		for (Square to : captures) {
+			moves.push_back(Move{queen, to, Piece::EMPTY, true, false, false, false});
+		}
 	}
 }
 
 void MoveGenerator::GenerateKingMoves(std::vector<Move>& moves) {
-	GenerateKingNorthMove(moves);
-	GenerateKingEastMoves(moves);
-	GenerateKingSouthMove(moves);
-	GenerateKingWestMoves(moves);
+	Square kingSquare = static_cast<Square>(m_king);
+	Bitboard attackSet = m_magicBitboardHelper.GetKingAttacks(kingSquare);
+
+	Bitboard normalMoves = attackSet & m_emptySquares;
+	for (Square to : normalMoves) {
+		moves.push_back(Move{kingSquare, to, Piece::EMPTY, false, false, false, false});
+	}
+
+	Bitboard captures = attackSet & m_enemyPieces;
+	for (Square to : captures) {
+		moves.push_back(Move{kingSquare, to, Piece::EMPTY, true, false, false, false});
+	}
 }
 
 void MoveGenerator::GenerateWhiteCastleMoves(std::vector<Move>& moves) {
@@ -629,7 +399,7 @@ void MoveGenerator::GenerateWhiteCastleMoves(std::vector<Move>& moves) {
 		bool isKingsideClear = (m_occupiedSquares & WHITE_KINGSIDE_CASTLE_SPACE_MASK).Empty();
 		bool isNotThroughCheck = (m_enemyAttackSet & WHITE_KINGSIDE_CASTLE_CHECKS_MASK).Empty();
 		if (isKingsideClear && isNotThroughCheck) {
-			moves.push_back(Move{m_king, G1_MASK, Piece::EMPTY, false, false, false, true});
+			moves.push_back(Move{static_cast<Square>(m_king), Square::g1, Piece::EMPTY, false, false, false, true});
 		}
 	}
 
@@ -637,20 +407,17 @@ void MoveGenerator::GenerateWhiteCastleMoves(std::vector<Move>& moves) {
 		bool isQueensideClear = (m_occupiedSquares & WHITE_QUEENSIDE_CASTLE_SPACE_MASK).Empty();
 		bool isNotThroughCheck = (m_enemyAttackSet & WHITE_QUEENSIDE_CASTLE_CHECKS_MASK).Empty();
 		if (isQueensideClear && isNotThroughCheck) {
-			moves.push_back(Move{m_king, C1_MASK, Piece::EMPTY, false, false, false, true});
+			moves.push_back(Move{static_cast<Square>(m_king), Square::c1, Piece::EMPTY, false, false, false, true});
 		}
 	}
 }
 
 void MoveGenerator::GenerateBlackCastleMoves(std::vector<Move>& moves) {
-
-
-
 	if (m_board.GetCastlePermission(CastlePermission::BLACK_KINGSIDE)) {
 		bool isKingsideClear = (m_occupiedSquares & BLACK_KINGSIDE_CASTLE_SPACE_MASK).Empty();
 		bool isNotThroughCheck = (m_enemyAttackSet & BLACK_KINGSIDE_CASTLE_CHECKS_MASK).Empty();
 		if (isKingsideClear && isNotThroughCheck) {
-			moves.push_back(Move{m_king, G8_MASK, Piece::EMPTY, false, false, false, true});
+			moves.push_back(Move{static_cast<Square>(m_king), Square::g8, Piece::EMPTY, false, false, false, true});
 		}
 	}
 
@@ -658,7 +425,7 @@ void MoveGenerator::GenerateBlackCastleMoves(std::vector<Move>& moves) {
 		bool isQueensideClear = (m_occupiedSquares & BLACK_QUEENSIDE_CASTLE_SPACE_MASK).Empty();
 		bool isNotThroughCheck = (m_enemyAttackSet & BLACK_QUEENSIDE_CASTLE_CHECKS_MASK).Empty();
 		if (isQueensideClear && isNotThroughCheck) {
-			moves.push_back(Move{m_king, C8_MASK, Piece::EMPTY, false, false, false, true});
+			moves.push_back(Move{static_cast<Square>(m_king), Square::c8, Piece::EMPTY, false, false, false, true});
 		}
 	}
 }
@@ -744,21 +511,9 @@ Bitboard MoveGenerator::GetKnightAttackSet(Bitboard knights) {
 
 	if (knights.Empty()) return attackSet;
 
-	Bitboard north = knights.ShiftNorth();
-	attackSet |= north.ShiftNorthWest();
-	attackSet |= north.ShiftNorthEast();
-
-	Bitboard east = knights.ShiftEast();
-	attackSet |= east.ShiftNorthEast();
-	attackSet |= east.ShiftSouthEast();
-
-	Bitboard south = knights.ShiftSouth();
-	attackSet |= south.ShiftSouthEast();
-	attackSet |= south.ShiftSouthWest();
-
-	Bitboard west = knights.ShiftWest();
-	attackSet |= west.ShiftNorthWest();
-	attackSet |= west.ShiftSouthWest();
+	for (Square knight : knights) {
+		attackSet |= m_magicBitboardHelper.GetKnightAttacks(knight);
+	}
 
 	return attackSet;
 }
@@ -782,10 +537,11 @@ Bitboard MoveGenerator::GetRookAttackSet(Bitboard rooks, Bitboard allPieces) {
 
 	for (Square rook : rooks) {
 		Bitboard occupancyMask = GetOrthogonalOccupancyMask(rook);
-
 		Bitboard occupancy = occupancyMask & allPieces;
 
-		attackSet |= m_magicBitboardHelper.GetOrthogonalAttacks(rook, occupancy);
+		Bitboard attacks = m_magicBitboardHelper.GetOrthogonalAttacks(rook, occupancy);
+
+		attackSet |= attacks;
 	}
 
 	return attackSet;
@@ -812,16 +568,7 @@ Bitboard MoveGenerator::GetQueenAttackSet(Bitboard queens, Bitboard allPieces) {
 }
 
 Bitboard MoveGenerator::GetKingAttackSet(Bitboard king) {
-	Bitboard attackSet = 0ULL;
-
-	attackSet |= king.ShiftNorth();
-	attackSet |= king.ShiftNorthEast();
-	attackSet |= king.ShiftEast();
-	attackSet |= king.ShiftSouthEast();
-	attackSet |= king.ShiftSouth();
-	attackSet |= king.ShiftSouthWest();
-	attackSet |= king.ShiftWest();
-	attackSet |= king.ShiftNorthWest();
+	Bitboard attackSet = m_magicBitboardHelper.GetKingAttacks(static_cast<Square>(king));
 
 	return attackSet;
 }

@@ -3,13 +3,115 @@
 MagicBitboardHelper::MagicBitboardHelper() :
 	m_rng{}
 {
+	// Uncomment these when doing one-off calculations
+	//GenerateOrthogonalMagics();
+	//GenerateDiagonalMagics();
+
+	//GenerateKnightAttacks();
+	//GenerateKingAttacks();
+
+	//GenerateOrthogonalRays();
+	//GenerateDiagonalRays();
+
+	// Uncomment these when actually running program!
 	PopulateOrthogonalAttacks();
 	PopulateDiagonalAttacks();
+	PopulateBetweenMasks();
 }
 
-Bitboard MagicBitboardHelper::GenerateOrthogonalMoves(Square square, Bitboard configuration) {
-	Bitboard squareBB = GetBitmask(square);
-	Bitboard moves = 0ULL;
+void MagicBitboardHelper::PopulateBetweenMasks(Square square) {
+	std::array<Bitboard, static_cast<size_t>(Square::COUNT)>& betweenMasks = m_betweenMasks[static_cast<size_t>(square)];
+
+	Bitboard squareBB{square};
+
+	Bitboard orthogonalOccupancyMask = GetOrthogonalOccupancyMask(square);
+	Bitboard diagonalOccupancyMask = GetDiagonalOccupancyMask(square);
+
+	for (size_t i = 0; i < static_cast<size_t>(Square::COUNT); ++i) {
+		Square otherSquare = static_cast<Square>(i);
+		Bitboard otherSquareBB{otherSquare};
+
+		bool orthogonallyAligned = (ORTHOGONAL_RAYS[static_cast<size_t>(square)] & otherSquareBB).Any();
+		bool diagonallyAligned = (DIAGONAL_RAYS[static_cast<size_t>(square)] & otherSquareBB).Any();
+
+		if (!orthogonallyAligned && !diagonallyAligned) {
+			betweenMasks[i] = Bitboard{0ULL};
+			continue;
+		}
+
+		if (orthogonallyAligned) {
+
+			Bitboard orthogonalOccupancy = orthogonalOccupancyMask & otherSquareBB;
+			Bitboard attackSet = GetOrthogonalAttacks(square, orthogonalOccupancy);
+
+			Bitboard otherOccupancyMask = GetOrthogonalOccupancyMask(otherSquare);
+			Bitboard otherOccupancy = otherOccupancyMask & squareBB;
+			Bitboard otherAttackSet = GetOrthogonalAttacks(otherSquare, otherOccupancy);
+
+			betweenMasks[i] = attackSet & otherAttackSet;
+		} else {
+
+			Bitboard diagonalOccupancy = diagonalOccupancyMask & otherSquareBB;
+			Bitboard attackSet = GetDiagonalAttacks(square, diagonalOccupancy);
+
+			Bitboard otherOccupancyMask = GetDiagonalOccupancyMask(otherSquare);
+			Bitboard otherOccupancy = otherOccupancyMask & squareBB;
+			Bitboard otherAttackSet = GetDiagonalAttacks(otherSquare, otherOccupancy);
+
+			betweenMasks[i] = attackSet & otherAttackSet;
+		}
+	}
+}
+
+void MagicBitboardHelper::PopulateBetweenMasks() {
+	#define X(square) PopulateBetweenMasks(Square::square);
+	SQUARE_LIST
+	#undef X
+}
+
+void MagicBitboardHelper::GenerateOrthogonalRays(Square square) {
+	Bitboard squareBB{square};
+
+	Bitboard rays{0ULL};
+
+	Bitboard shadow;
+
+	shadow = squareBB;
+	do {
+		shadow = shadow.ShiftNorth();
+		rays |= shadow;
+	} while (shadow.Any());
+
+	shadow = squareBB;
+	do {
+		shadow = shadow.ShiftEast();
+		rays |= shadow;
+	} while (shadow.Any());
+
+	shadow = squareBB;
+	do {
+		shadow = shadow.ShiftSouth();
+		rays |= shadow;
+	} while (shadow.Any());
+
+	shadow = squareBB;
+	do {
+		shadow = shadow.ShiftWest();
+		rays |= shadow;
+	} while (shadow.Any());
+
+	std::cerr << rays.GetBoard() << ", ";
+}
+
+void MagicBitboardHelper::GenerateOrthogonalRays() {
+	#define X(square) GenerateOrthogonalRays(Square::square);
+	SQUARE_LIST
+	#undef X
+}
+
+Bitboard MagicBitboardHelper::GenerateOrthogonalAttacks(Square square, Bitboard occupancy) {
+	Bitboard squareBB{square};
+	Bitboard moves{0ULL};
 	Bitboard shadow;
 	
 	shadow = squareBB;
@@ -20,7 +122,7 @@ Bitboard MagicBitboardHelper::GenerateOrthogonalMoves(Square square, Bitboard co
 
 		moves |= shadow;
 
-		if ((configuration & shadow).Any()) break;
+		if ((occupancy & shadow).Any()) break;
 	}
 
 	shadow = squareBB;
@@ -31,7 +133,7 @@ Bitboard MagicBitboardHelper::GenerateOrthogonalMoves(Square square, Bitboard co
 
 		moves |= shadow;
 
-		if ((configuration & shadow).Any()) break;
+		if ((occupancy & shadow).Any()) break;
 	}
 
 	shadow = squareBB;
@@ -42,7 +144,7 @@ Bitboard MagicBitboardHelper::GenerateOrthogonalMoves(Square square, Bitboard co
 
 		moves |= shadow;
 
-		if ((configuration & shadow).Any()) break;
+		if ((occupancy & shadow).Any()) break;
 	}
 
 	shadow = squareBB;
@@ -53,25 +155,24 @@ Bitboard MagicBitboardHelper::GenerateOrthogonalMoves(Square square, Bitboard co
 
 		moves |= shadow;
 
-		if ((configuration & shadow).Any()) break;
+		if ((occupancy & shadow).Any()) break;
 	}
 
 	return moves;
 }
 
-void MagicBitboardHelper::GenerateOrthogonalConfigurationsAndMoves(Square square, std::vector<Bitboard>& configurations, std::vector<Bitboard>& moves) {
+void MagicBitboardHelper::GenerateOrthogonalOccupanciesAndAttacks(Square square, std::vector<Bitboard>& occupancies, std::vector<Bitboard>& attackSets) {
 	Bitboard occupancyMask = GetOrthogonalOccupancyMask(square);
-
-	Bitboard configuration{0ULL};
+	Bitboard occupancy{0ULL};
 
 	do {
-		configurations.push_back(configuration);
-		Bitboard moveset = GenerateOrthogonalMoves(square, configuration);
+		occupancies.push_back(occupancy);
+		Bitboard attackSet = GenerateOrthogonalAttacks(square, occupancy);
 
-		moves.push_back(moveset);
+		attackSets.push_back(attackSet);
 
-		configuration = (configuration - occupancyMask) & occupancyMask;
-	} while (configuration != 0ULL);
+		occupancy = (occupancy - occupancyMask) & occupancyMask;
+	} while (occupancy != 0ULL);
 }
 
 uint64_t MagicBitboardHelper::SearchForOrthogonalMagic(const std::vector<Bitboard>& configurations, const std::vector<Bitboard>& moves) {
@@ -106,12 +207,12 @@ uint64_t MagicBitboardHelper::SearchForOrthogonalMagic(const std::vector<Bitboar
 }
 
 void MagicBitboardHelper::GenerateOrthogonalMagic(Square square) {
-	std::vector<Bitboard> configurations;
-	std::vector<Bitboard> moves;
+	std::vector<Bitboard> occupancies;
+	std::vector<Bitboard> attackSets;
 
-	GenerateOrthogonalConfigurationsAndMoves(square, configurations, moves);
+	GenerateOrthogonalOccupanciesAndAttacks(square, occupancies, attackSets);
 
-	uint64_t magic = SearchForOrthogonalMagic(configurations, moves);
+	uint64_t magic = SearchForOrthogonalMagic(occupancies, attackSets);
 	std::cerr <<  magic << ", ";
 }
 
@@ -122,18 +223,18 @@ void MagicBitboardHelper::GenerateOrthogonalMagics() {
 }
 
 void MagicBitboardHelper::PopulateOrthogonalAttacks(Square square) {
-	std::vector<Bitboard> configurations;
-	std::vector<Bitboard> moves;
+	std::vector<Bitboard> occupancies;
+	std::vector<Bitboard> attackSets;
 
-	GenerateOrthogonalConfigurationsAndMoves(square, configurations, moves);
+	GenerateOrthogonalOccupanciesAndAttacks(square, occupancies, attackSets);
 
 	std::array<Bitboard, ORTHOGONAL_CONFIGURATIONS>& orthogonalAttacks = m_orthogonalAttacks[static_cast<size_t>(square)];
 	
-	for (size_t i = 0; i < configurations.size(); ++i) {
-		Bitboard configuration = configurations.at(i);
-		Bitboard moveSet = moves.at(i);
+	for (size_t i = 0; i < occupancies.size(); ++i) {
+		Bitboard occupancy = occupancies.at(i);
+		Bitboard attackSet = attackSets.at(i);
 
-		orthogonalAttacks[GetOrthogonalIndex(square, configuration)] = moveSet;
+		orthogonalAttacks[GetOrthogonalIndex(square, occupancy)] = attackSet;
 	}
 }
 
@@ -143,8 +244,48 @@ void MagicBitboardHelper::PopulateOrthogonalAttacks() {
 	#undef X
 }
 
+void MagicBitboardHelper::GenerateDiagonalRays(Square square) {
+	Bitboard squareBB{square};
+
+	Bitboard rays{0ULL};
+
+	Bitboard shadow;
+
+	shadow = squareBB;
+	do {
+		shadow = shadow.ShiftNorthEast();
+		rays |= shadow;
+	} while (shadow.Any());
+
+	shadow = squareBB;
+	do {
+		shadow = shadow.ShiftSouthEast();
+		rays |= shadow;
+	} while (shadow.Any());
+
+	shadow = squareBB;
+	do {
+		shadow = shadow.ShiftSouthWest();
+		rays |= shadow;
+	} while (shadow.Any());
+
+	shadow = squareBB;
+	do {
+		shadow = shadow.ShiftNorthWest();
+		rays |= shadow;
+	} while (shadow.Any());
+
+	std::cerr << rays.GetBoard() << ", ";
+}
+
+void MagicBitboardHelper::GenerateDiagonalRays() {
+	#define X(square) GenerateDiagonalRays(Square::square);
+	SQUARE_LIST
+	#undef X
+}
+
 Bitboard MagicBitboardHelper::GenerateDiagonalAttacks(Square square, Bitboard occupancy) {
-	Bitboard squareBB = GetBitmask(square);
+	Bitboard squareBB = Bitboard(square);
 	Bitboard moves = 0ULL;
 	Bitboard shadow;
 	
@@ -275,6 +416,55 @@ void MagicBitboardHelper::PopulateDiagonalAttacks(Square square) {
 
 void MagicBitboardHelper::PopulateDiagonalAttacks() {
 	#define X(square) PopulateDiagonalAttacks(Square::square);
+	SQUARE_LIST
+	#undef X
+}
+
+void MagicBitboardHelper::GenerateKnightAttacks(Square square) {
+	Bitboard knightBB = Bitboard(square);
+	Bitboard attackSet{0ULL};
+
+	attackSet |= knightBB.ShiftNorth().ShiftNorth().ShiftEast();
+	attackSet |= knightBB.ShiftNorth().ShiftNorth().ShiftWest();
+
+	attackSet |= knightBB.ShiftEast().ShiftEast().ShiftNorth();
+	attackSet |= knightBB.ShiftEast().ShiftEast().ShiftSouth();
+
+	attackSet |= knightBB.ShiftSouth().ShiftSouth().ShiftEast();
+	attackSet |= knightBB.ShiftSouth().ShiftSouth().ShiftWest();
+
+	attackSet |= knightBB.ShiftWest().ShiftWest().ShiftSouth();
+	attackSet |= knightBB.ShiftWest().ShiftWest().ShiftNorth();
+
+	std::cerr << attackSet.GetBoard() << ", ";
+
+}
+
+void MagicBitboardHelper::GenerateKnightAttacks() {
+	#define X(square) GenerateKnightAttacks(Square::square);
+	SQUARE_LIST
+	#undef X
+}
+
+void MagicBitboardHelper::GenerateKingAttacks(Square square) {
+	Bitboard kingBB = Bitboard{square};
+	Bitboard attackSet{0ULL};
+
+	attackSet |= kingBB.ShiftNorth();
+	attackSet |= kingBB.ShiftEast();
+	attackSet |= kingBB.ShiftSouth();
+	attackSet |= kingBB.ShiftWest();
+
+	attackSet |= kingBB.ShiftNorthEast();
+	attackSet |= kingBB.ShiftSouthEast();
+	attackSet |= kingBB.ShiftSouthWest();
+	attackSet |= kingBB.ShiftNorthWest();
+
+	std::cerr << attackSet.GetBoard() << ", ";
+}
+
+void MagicBitboardHelper::GenerateKingAttacks() {
+	#define X(square) GenerateKingAttacks(Square::square);
 	SQUARE_LIST
 	#undef X
 }

@@ -41,14 +41,4 @@ constexpr inline Square& operator++(Square& sq) {
 	return sq;
 }
 
-constexpr inline uint64_t GetBitmask(Square sq) {
-	return 1ULL << static_cast<uint8_t>(sq);
-}
-
-constexpr inline Square GetSquareFromBitmask(uint64_t bb) {
-	if (bb == 0) return Square::NONE;
-
-	return static_cast<Square>(__builtin_ctzll(bb));
-}
-
 std::ostream& operator<<(std::ostream& os, Square sq);

@@ -55,7 +55,7 @@ int16_t Player::Evaluate() {
 
 Move Player::IterativeDeepening(int8_t maxDepth, Moment timeDeadline) {
 	// Initialise PV move to garbage move that will never clash with anything
-	Move movePv{ A1_MASK, A1_MASK };
+	Move movePv{ Square::a1, Square::a1 };
 	int16_t bestScore = -MAX_SCORE;
 	int8_t depth = 1;
 

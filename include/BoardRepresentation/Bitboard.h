@@ -80,52 +80,55 @@ public:
 
 	constexpr Bitboard() = default;
 	constexpr Bitboard(uint64_t board) noexcept : m_board{board} {};
+	constexpr explicit Bitboard(Square square) noexcept : m_board{1ULL << static_cast<uint8_t>(square)} {};
 
-	constexpr inline uint64_t GetBoard() const noexcept { return m_board; }
+	constexpr uint64_t GetBoard() const noexcept { return m_board; }
 
-	constexpr inline Square ToSquare() const noexcept {
+	constexpr Square ToSquare() const noexcept {
 		if (!m_board)
 			return Square::NONE;
 		return static_cast<Square>(__builtin_ctzll(m_board));
 	}
 
-	constexpr inline Bitboard PopLsb() noexcept {
+	constexpr Bitboard PopLsb() noexcept {
 		Bitboard lsb = m_board & -m_board;
 		m_board &= m_board - 1;
 		return lsb;
 	}
 
-	constexpr inline int PopCount() const noexcept {
+	constexpr int PopCount() const noexcept {
 		return __builtin_popcountll(m_board);
 	}
 
-	constexpr inline Bitboard&	operator-=(Bitboard rhs)				noexcept	{ m_board -= rhs.m_board; return *this; }
-	constexpr inline Bitboard	operator-(Bitboard rhs)			const	noexcept	{ Bitboard tmp = *this; return tmp -= rhs; }
+	constexpr 	Bitboard&	operator-=(Bitboard rhs)				noexcept	{ m_board -= rhs.m_board; return *this; }
+	constexpr 	Bitboard	operator-(Bitboard rhs)			const	noexcept	{ Bitboard tmp = *this; return tmp -= rhs; }
 
-	constexpr inline uint64_t	operator*(uint64_t s)			const	noexcept	{ return m_board * s;  }
+	constexpr 	uint64_t	operator*(uint64_t s)			const	noexcept	{ return m_board * s;  }
 
-	constexpr inline Bitboard& 	operator<<=(int s) 						noexcept	{ m_board <<= s; return *this; }
-	constexpr inline Bitboard	operator<<(int s)				const	noexcept	{ Bitboard tmp = *this; return tmp <<= s; }
+	constexpr 	Bitboard& 	operator<<=(int s) 						noexcept	{ m_board <<= s; return *this; }
+	constexpr 	Bitboard	operator<<(int s)				const	noexcept	{ Bitboard tmp = *this; return tmp <<= s; }
 
-	constexpr inline Bitboard& 	operator>>=(int s) 						noexcept	{ m_board >>= s; return *this; }
-	constexpr inline Bitboard	operator>>(int s)				const	noexcept	{ Bitboard tmp = *this; return tmp >>= s; }
+	constexpr 	Bitboard& 	operator>>=(int s) 						noexcept	{ m_board >>= s; return *this; }
+	constexpr 	Bitboard	operator>>(int s)				const	noexcept	{ Bitboard tmp = *this; return tmp >>= s; }
 
-	constexpr inline Bitboard&	operator|=(const Bitboard rhs)			noexcept 	{ m_board |= rhs.m_board; return *this; }
-	constexpr inline Bitboard	operator|(const Bitboard rhs)	const	noexcept 	{ Bitboard tmp = *this; return tmp |= rhs; }
+	constexpr 	Bitboard&	operator|=(const Bitboard rhs)			noexcept 	{ m_board |= rhs.m_board; return *this; }
+	constexpr 	Bitboard	operator|(const Bitboard rhs)	const	noexcept 	{ Bitboard tmp = *this; return tmp |= rhs; }
 
-	constexpr inline Bitboard&	operator&=(const Bitboard rhs)			noexcept 	{ m_board &= rhs.m_board; return *this; }
-	constexpr inline Bitboard	operator&(const Bitboard rhs)	const 	noexcept 	{ Bitboard tmp = *this; return tmp &= rhs; }
+	constexpr 	Bitboard&	operator&=(const Bitboard rhs)			noexcept 	{ m_board &= rhs.m_board; return *this; }
+	constexpr 	Bitboard	operator&(const Bitboard rhs)	const 	noexcept 	{ Bitboard tmp = *this; return tmp &= rhs; }
 
-	constexpr inline Bitboard&	operator^=(const Bitboard rhs)			noexcept	{ m_board ^= rhs.m_board; return *this; }
-	constexpr inline Bitboard	operator^(const Bitboard rhs)	const	noexcept	{ Bitboard tmp = *this; return tmp ^= rhs; }
+	constexpr 	Bitboard&	operator^=(const Bitboard rhs)			noexcept	{ m_board ^= rhs.m_board; return *this; }
+	constexpr 	Bitboard	operator^(const Bitboard rhs)	const	noexcept	{ Bitboard tmp = *this; return tmp ^= rhs; }
 
-	constexpr inline bool		operator==(const Bitboard rhs)	const	noexcept	{ return m_board == rhs.m_board; }
-	constexpr inline bool		operator!=(const Bitboard rhs)	const 	noexcept	{ return m_board != rhs.m_board; }
+	constexpr 	bool		operator==(const Bitboard rhs)	const	noexcept	{ return m_board == rhs.m_board; }
+	constexpr 	bool		operator!=(const Bitboard rhs)	const 	noexcept	{ return m_board != rhs.m_board; }
 
-	constexpr inline Bitboard	operator~()						const	noexcept	{ return Bitboard(~m_board); }
+	constexpr 	Bitboard	operator~()						const	noexcept	{ return Bitboard(~m_board); }
 
-	constexpr inline bool		Any() const noexcept { return m_board != 0; }
-	constexpr inline bool		Empty() const noexcept { return m_board == 0; }
+	constexpr	explicit	operator Square()				const	noexcept	{ return (m_board == 0) ? Square::NONE : static_cast<Square>(__builtin_ctzll(m_board)); }
+
+	constexpr bool		Any() const noexcept { return m_board != 0; }
+	constexpr bool		Empty() const noexcept { return m_board == 0; }
 
 	// Note: We should not need rank masks here because shifting should throw away invalid vertical moves anyway.
 	constexpr Bitboard ShiftNorth() 	const noexcept { return m_board << 8; }

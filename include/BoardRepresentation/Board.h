@@ -13,23 +13,21 @@
 
 // Macro to do a safe call during move stuff.
 #if DEBUG
-#define SAFE_CALL_WITH_MOVE(expr)													\
+#define SAFE_CALL(expr)													\
 do {																				\
 	if (!(expr)) {																	\
 		std::cerr << "Error while executing " << #expr << '\n';						\
 		std::cerr << *this;															\
-		std::cerr << move;															\
 		std::exit(1);																\
 	} 																				\
 	if (!CheckBoardOccupancy()) {													\
 		std::cerr << "Board occupancy failure after executing " << #expr << '\n';	\
 		std::cerr << *this;															\
-		std::cerr << move;															\
 		std::exit(1);																\
 		}																			\
 } while (false)
 #else
-#define SAFE_CALL_WITH_MOVE(expr) (void) expr
+#define SAFE_CALL(expr) (void) expr
 #endif
 
 typedef std::array<bool, static_cast<size_t>(CastlePermission::COUNT)> CastlePermissionsList;
@@ -56,8 +54,9 @@ public:
 	void SetCastlePermission(CastlePermission castlePermission, bool permitted) noexcept;
 	void SetCastlePermissions(std::array<bool, static_cast<size_t>(CastlePermission::COUNT)> castlePermissions) noexcept;
 
-	inline Bitboard GetEnPassantSquare() const noexcept { return m_enPassantSquare; }
-	void SetEnPassantSquare(Bitboard bb) noexcept;
+	inline Square GetEnPassantSquare() const noexcept { return m_enPassantSquare; }
+	void SetEnPassantSquare(Square square) noexcept;
+	inline void SetEnPassantSquare(Bitboard squareBB) noexcept { SetEnPassantSquare(static_cast<Square>(squareBB)); }
 
 	inline bool IsWhiteTurn() const noexcept { return m_isWhiteTurn; }
 	void SwitchTurn() noexcept;
@@ -68,18 +67,18 @@ public:
 	friend std::ostream& operator<<(std::ostream& os, const Board& board);
 
 private:
-	void DoCapture(const Move& move, Undo& undo);
-	void DoEnPassantCapture(const Move& move);
-	void DoDoublePawnPush(const Move& move);
-	void MakeCastleMove(const Move& move);
-	void MakePromotionMove(const Move& move);
-	void MakeNormalMove(const Move& move);
+	void DoCapture(Bitboard from, Bitboard to, Undo& undo);
+	void DoEnPassantCapture(Bitboard to);
+	void DoDoublePawnPush(Bitboard to);
+	void MakeCastleMove(Bitboard to);
+	void MakePromotionMove(Bitboard from, Bitboard to, Piece promotionPiece);
+	void MakeQuietMove(Bitboard from, Bitboard to);
 
-	void UndoCapture(const Move& move, const Undo& undo);
-	void UndoEnPassantCapture(const Move& move);
-	void UndoCastleMove(const Move& move);
-	void UndoPromotionMove(const Move& move, const Undo& undo);
-	void UndoNormalMove(const Move& move);
+	void UndoCapture(Bitboard to, Piece capturedPiece);
+	void UndoEnPassantCapture(Bitboard to);
+	void UndoCastleMove(Bitboard to);
+	void UndoPromotionMove(Bitboard from, Bitboard to, Piece promotionPiece);
+	void UndoNormalMove(Bitboard from, Bitboard to);
 
 	bool PickUp(Piece piece, Bitboard bb);
 	bool PutDown(Piece piece, Bitboard bb);
@@ -91,7 +90,7 @@ private:
 
 	Bitboard m_pieceBitboards[Piece::NUM_PIECES];
 	std::array<bool, static_cast<size_t>(CastlePermission::COUNT)> m_castlePermissions;
-	Bitboard m_enPassantSquare;
+	Square m_enPassantSquare;
 	bool m_isWhiteTurn;
 
 	Zobrist m_zobrist;
