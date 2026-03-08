@@ -13,17 +13,17 @@
 
 // Macro to do a safe call during move stuff.
 #if DEBUG
-#define SAFE_CALL(expr)													\
+#define SAFE_CALL(expr)																\
 do {																				\
 	if (!(expr)) {																	\
 		std::cerr << "Error while executing " << #expr << '\n';						\
 		std::cerr << *this;															\
-		std::exit(1);																\
+		assert(false);																\
 	} 																				\
 	if (!CheckBoardOccupancy()) {													\
 		std::cerr << "Board occupancy failure after executing " << #expr << '\n';	\
 		std::cerr << *this;															\
-		std::exit(1);																\
+		std::abort();																\
 		}																			\
 } while (false)
 #else
@@ -40,6 +40,8 @@ public:
 	void SetUpStartPosition();
 
 	inline Bitboard GetPieceBitboard(Piece p) const noexcept { return m_pieceBitboards[p]; }
+	inline const Bitboard* const GetPieceBitboards() const noexcept { return m_pieceBitboards.data(); }
+
 	Bitboard GetAllPieceBitboard() const;
 	Bitboard GetWhitePieceBitboard() const;
 	Bitboard GetBlackPieceBitboard() const;
@@ -59,7 +61,7 @@ public:
 	inline void SetEnPassantSquare(Bitboard squareBB) noexcept { SetEnPassantSquare(static_cast<Square>(squareBB)); }
 
 	inline bool IsWhiteTurn() const noexcept { return m_isWhiteTurn; }
-	void SwitchTurn() noexcept;
+	inline void SwitchTurn() noexcept { m_isWhiteTurn = !m_isWhiteTurn; m_zobrist.ApplyWhiteTurnHash(); }
 
 	Undo MakeMove(const Move& move);
 	void UndoMove(const Move& move, const Undo& undo);
@@ -88,7 +90,7 @@ private:
 	void CheckKingCount(const Move& move) const;
 #endif
 
-	Bitboard m_pieceBitboards[Piece::NUM_PIECES];
+	std::array<Bitboard, Piece::NUM_PIECES> m_pieceBitboards;
 	std::array<bool, static_cast<size_t>(CastlePermission::COUNT)> m_castlePermissions;
 	Square m_enPassantSquare;
 	bool m_isWhiteTurn;

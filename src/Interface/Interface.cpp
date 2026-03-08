@@ -50,28 +50,20 @@ bool Interface::ProcessCommand(std::string input) {
 	}
 
 	if (input == "moves") {
-		std::vector<Move> moves = m_moveGenerator.GenerateLegalMoves();
+		MoveList moves;
+		m_moveGenerator.GenerateMoves(moves);
 		for (const Move& m : moves) {
 			std::cout << m;
 		}
 		return true;
 	}
 
-	if (input == "pseudomoves") {
-		std::vector<Move> moves = m_moveGenerator.GeneratePseudoMoves();
+	if (input == "captures") {
+		MoveList moves;
+		m_moveGenerator.GenerateMoves(moves, true);
 		for (const Move& m : moves) {
 			std::cout << m;
 		}
-		return true;
-	}
-
-	if (input == "blackattack") {
-		std::cout << m_moveGenerator.GetBlackAttackSet();
-		return true;
-	}
-
-	if (input == "whiteattack") {
-		std::cout << m_moveGenerator.GetWhiteAttackSet();
 		return true;
 	}
 
@@ -104,6 +96,7 @@ bool Interface::ProcessCommand(std::string input) {
 	}
 
 	if (input == "ucinewgame") {
+		m_player.ClearTranspositionTable();
 		return true;
 	}
 
@@ -169,10 +162,11 @@ bool Interface::Position(std::istringstream& tokenStream) {
 		return false;
 
 	while (tokenStream >> token) {
-		std::vector<Move> legalMoves = m_moveGenerator.GenerateLegalMoves();
+		MoveList moves;
+		m_moveGenerator.GenerateMoves(moves);
 
 		bool foundMove = false;
-		for (const Move& move : legalMoves) {
+		for (const Move& move : moves) {
 			if (token == move.ToString()) {
 				m_board.MakeMove(move);
 				foundMove = true;

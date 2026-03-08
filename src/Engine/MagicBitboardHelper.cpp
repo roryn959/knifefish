@@ -9,6 +9,8 @@ MagicBitboardHelper::MagicBitboardHelper() :
 
 	//GenerateKnightAttacks();
 	//GenerateKingAttacks();
+	//GenerateWhitePawnAttacks();
+	//GenerateBlackPawnAttacks();
 
 	//GenerateOrthogonalRays();
 	//GenerateDiagonalRays();
@@ -447,7 +449,7 @@ void MagicBitboardHelper::GenerateKnightAttacks() {
 }
 
 void MagicBitboardHelper::GenerateKingAttacks(Square square) {
-	Bitboard kingBB = Bitboard{square};
+	Bitboard kingBB{square};
 	Bitboard attackSet{0ULL};
 
 	attackSet |= kingBB.ShiftNorth();
@@ -465,6 +467,38 @@ void MagicBitboardHelper::GenerateKingAttacks(Square square) {
 
 void MagicBitboardHelper::GenerateKingAttacks() {
 	#define X(square) GenerateKingAttacks(Square::square);
+	SQUARE_LIST
+	#undef X
+}
+
+void MagicBitboardHelper::GenerateWhitePawnAttacks(Square square) {
+	Bitboard pawnBB{square};
+	Bitboard attackSet{0ULL};
+
+	attackSet |= pawnBB.ShiftNorthEast();
+	attackSet |= pawnBB.ShiftNorthWest();
+
+	std::cerr << attackSet.GetBoard() << ", ";
+}
+
+void MagicBitboardHelper::GenerateWhitePawnAttacks() {
+	#define X(square) GenerateWhitePawnAttacks(Square::square);
+	SQUARE_LIST
+	#undef X
+}
+
+void MagicBitboardHelper::GenerateBlackPawnAttacks(Square square) {
+	Bitboard pawnBB{square};
+	Bitboard attackSet{0ULL};
+
+	attackSet |= pawnBB.ShiftSouthEast();
+	attackSet |= pawnBB.ShiftSouthWest();
+
+	std::cerr << attackSet.GetBoard() << ", ";
+}
+
+void MagicBitboardHelper::GenerateBlackPawnAttacks() {
+	#define X(square) GenerateBlackPawnAttacks(Square::square);
 	SQUARE_LIST
 	#undef X
 }

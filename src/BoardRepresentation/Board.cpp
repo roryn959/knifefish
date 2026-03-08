@@ -189,11 +189,6 @@ void Board::SetEnPassantSquare(Square square) noexcept {
 	m_zobrist.ApplyEnPassantHash(m_enPassantSquare);
 }
 
-void Board::SwitchTurn() noexcept {
-	m_isWhiteTurn = !m_isWhiteTurn;
-	m_zobrist.ApplyWhiteTurnHash();
-}
-
 bool Board::PickUp(Piece piece, Bitboard bb) {
 #if DEBUG
 	if (piece == Piece::EMPTY) return false;

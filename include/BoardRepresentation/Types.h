@@ -9,10 +9,8 @@
 	X(BLACK_QUEENSIDE)
 
 #define X(castle) castle,
-
 enum class CastlePermission : uint8_t {
 	CASTLE_PERMISSIONS_LIST
 	COUNT
 };
-
 #undef X

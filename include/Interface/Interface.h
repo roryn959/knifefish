@@ -3,7 +3,6 @@
 #include <ctime>
 #include <iostream>
 #include <sstream>
-#include <vector>
 
 #include "BoardRepresentation/Board.h"
 

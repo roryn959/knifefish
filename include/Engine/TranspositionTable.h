@@ -28,8 +28,9 @@ public:
 	TranspositionTable();
 
 	const TranspositionTableEntry* GetEntry(Hash key) const;
-
 	void SetEntry(Hash key, TranspositionTableEntry entry);
+
+	void Clear();
 
 private:
 	size_t m_numEntries;

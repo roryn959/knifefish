@@ -1,26 +1,43 @@
 #include "Engine/Player.h"
 
-//./cutechess-cli -engine cmd=./engines/basic_negamax name=Player1 proto=uci stderr=player1_logs -engine cmd=./engines/basic_negamax name=Player2 proto=uci stderr=player2_logs -each tc=inf depth=4 -games 1 -pgnout games.pgn
-
 
 Player::Player(Board& board) :
-#if DEBUG
-	m_nodesSearched{0},
-#endif
 	m_board{board},
 	m_moveGenerator{m_board},
-	m_transpositionTable{}
+	m_transpositionTable{},
+	m_nodesSearched{0},
+	m_deadline{},
+	m_isStopped{false}
 {}
 
 Move Player::Go(int depth, int wtime, int btime, int winc, int binc, int movestogo, int movetime) {
 	Moment startTime = Clock::now();
 
-	// Set defaults (or otherwise make decisions).
-	if (depth <= 0) depth = 10;
-	int timeAllowedSecs = 600;
+	if (depth <= 0)
+		depth = 15;
 
-	Moment deadline = startTime + ms(SecsToMillisecs(timeAllowedSecs));
-	Move bestMove = IterativeDeepening(depth, deadline);
+	float timeAllowedSecs;
+
+	if (movetime > 0) {
+		timeAllowedSecs = movetime / 1000.0f;
+	} else if (m_board.IsWhiteTurn() && wtime > 0) {
+		float whiteTimeSecs = wtime / 1000.0f;
+		float whiteIncrementSecs = winc / 1000.0f;
+		float baseTimeSecs = (whiteTimeSecs / 30.0f) + whiteIncrementSecs;
+		timeAllowedSecs = std::min(baseTimeSecs, whiteTimeSecs / 2.0f);
+	} else if (btime > 0) {
+		float blackTimeSecs = btime / 1000.0f;
+		float blackIncrementSecs = binc / 1000.0f;
+		float baseTimeSecs = (blackTimeSecs / 30.0f) + blackIncrementSecs;
+		timeAllowedSecs = std::min(baseTimeSecs, blackTimeSecs / 2.0f);
+	} else {
+		timeAllowedSecs = 600;
+	}
+
+	std::cerr << "Choosing to spend " << timeAllowedSecs << "s on this move.\n";
+
+	m_deadline = startTime + ms(SecsToMillisecs(timeAllowedSecs));
+	Move bestMove = IterativeDeepening(depth);
 
 #if DEBUG
 	auto searchTime = Clock::now() - startTime;
@@ -31,6 +48,7 @@ Move Player::Go(int depth, int wtime, int btime, int winc, int binc, int movesto
 	std::cerr << "Log: Search time (s): " << searchTimeS << "\n\n";
 #endif
 
+	std::cerr << "Returning move " << bestMove << '\n';
 	return bestMove;
 }
 
@@ -39,32 +57,35 @@ int16_t Player::Evaluate() {
 
 	Bitboard piecePositions;
 
-	#define X(piece) 																	\
-																						\
-	piecePositions = m_board.GetPieceBitboard(Piece::piece);							\
-	for (Square piecePosition : piecePositions) { 										\
-		eval += PIECE_VALUES[Piece::piece];												\
-		eval -= pieceSquareTables[Piece::piece][static_cast<size_t>(piecePosition)];	\
+	#define X(piece) 																			\
+																								\
+	piecePositions = m_board.GetPieceBitboard(Piece::piece);									\
+	for (Square piecePosition : piecePositions) { 												\
+		eval += PIECE_VALUES[Piece::piece];														\
+		eval -= midgamePieceSquareTables[Piece::piece][static_cast<size_t>(piecePosition)];		\
 	}
-
 	PIECES_LIST
 	#undef X
 
 	return m_board.IsWhiteTurn() ? eval : -eval;
 }
 
-Move Player::IterativeDeepening(int8_t maxDepth, Moment timeDeadline) {
+Move Player::IterativeDeepening(int8_t maxDepth) {
+	m_nodesSearched = 0;
+	m_isStopped = false;
+
 	// Initialise PV move to garbage move that will never clash with anything
 	Move movePv{ Square::a1, Square::a1 };
 	int16_t bestScore = -MAX_SCORE;
 	int8_t depth = 1;
 
 	while (depth <= maxDepth) {
-		if (Clock::now() >= timeDeadline)
+		Move bestMove;
+		int16_t score = RootNegamax(depth, movePv, bestMove);
+
+		if (m_isStopped)
 			break;
 
-		Move bestMove;
-		int16_t score = RootNegamax(depth, movePv, bestMove, timeDeadline);
 		if (score > bestScore) {
 			movePv = bestMove;
 		}
@@ -75,14 +96,20 @@ Move Player::IterativeDeepening(int8_t maxDepth, Moment timeDeadline) {
 	return movePv;
 }
 
-int16_t Player::RootNegamax(int8_t depth, const Move& movePv, Move& bestMove, Moment deadline) {
+int16_t Player::RootNegamax(int8_t depth, const Move& movePv, Move& bestMove) {
 #if DEBUG
-	m_nodesSearched = 1;
 	m_transpositionsHit = 0;
 	std::cerr << "Log: Called root Negamax with depth " << (int) depth << '\n';
 #endif
 
-	std::vector<Move> moves = m_moveGenerator.GenerateLegalMoves();
+	++m_nodesSearched;
+
+	MoveList moves;
+	bool check = m_moveGenerator.GenerateMoves(moves);
+
+	if (moves.size() == 0) {
+		return check ? -MATE_SCORE : 0;
+	}
 
 	// Reorder with PV move first
 	for (int i = 0; i < moves.size(); ++i) {
@@ -94,7 +121,7 @@ int16_t Player::RootNegamax(int8_t depth, const Move& movePv, Move& bestMove, Mo
 		}
 	}
 
-	int16_t bestScore = -MATE_SCORE;
+	int16_t bestScore = -MAX_SCORE;
 	int16_t alpha = -MAX_SCORE;
 	int16_t beta = MAX_SCORE;
 
@@ -103,6 +130,9 @@ int16_t Player::RootNegamax(int8_t depth, const Move& movePv, Move& bestMove, Mo
 		int16_t score = -Negamax(depth - 1, -beta, -alpha);
 		m_board.UndoMove(move, undo);
 
+		if (m_isStopped)
+			return 0;
+
 		if (score > bestScore) {
 			bestScore = score;
 			bestMove = move;
@@ -110,9 +140,6 @@ int16_t Player::RootNegamax(int8_t depth, const Move& movePv, Move& bestMove, Mo
 				alpha = score;
 			}
 		}
-
-		if (Clock::now() >= deadline)
-			break;
 	}
 
 #if DEBUG
@@ -123,14 +150,15 @@ int16_t Player::RootNegamax(int8_t depth, const Move& movePv, Move& bestMove, Mo
 	return bestScore;
 }
 
-bool Player::IsCheckmate() {
-	// This function assumes it is called from a context where there are no possible moves for the side to play
-	if (m_board.IsWhiteTurn())
-		return m_moveGenerator.IsAttackedByBlack(m_board.GetPieceBitboard(Piece::WHITE_KING));
-	return m_moveGenerator.IsAttackedByWhite(m_board.GetPieceBitboard(Piece::BLACK_KING));
-}
-
 int16_t Player::Negamax(int8_t depth, int16_t alpha, int16_t beta) {
+
+	if (((m_nodesSearched % 2048) == 0) && (Clock::now() >= m_deadline)) {
+		m_isStopped = true;
+		return 0;
+	}
+
+	++m_nodesSearched;
+
 	Hash hash = m_board.GetHash();
 	const TranspositionTableEntry* pEntry = m_transpositionTable.GetEntry(hash);
 
@@ -157,20 +185,15 @@ int16_t Player::Negamax(int8_t depth, int16_t alpha, int16_t beta) {
 		}
 	}
 
-#if DEBUG
-	++m_nodesSearched;
-#endif
-
-	std::vector<Move> moves = m_moveGenerator.GenerateLegalMoves();
+	MoveList moves;
+	bool check = m_moveGenerator.GenerateMoves(moves);
 
 	if (moves.size() == 0) {
-		if (IsCheckmate())
-			return -MATE_SCORE;
-		return 0;
+		return check ? -MATE_SCORE : 0;
 	}
 
 	if (depth == 0)
-		return Evaluate();
+		return Quiescence(10, alpha, beta);
 
 	int16_t bestScore = -MAX_SCORE;
 	Move bestMove;
@@ -212,6 +235,33 @@ int16_t Player::Negamax(int8_t depth, int16_t alpha, int16_t beta) {
 	return bestScore;
 }
 
+int16_t Player::Quiescence(int8_t depth, int16_t alpha, int16_t beta) {
+	int16_t eval = Evaluate();
+
+	if (depth == 0 || eval >= beta)
+		return beta;
+
+	if (eval > alpha)
+		alpha = eval;
+
+	MoveList captures;
+	m_moveGenerator.GenerateMoves(captures, true);
+
+	for (const Move& capture : captures) {
+		Undo undo = m_board.MakeMove(capture);
+		int16_t score = -Quiescence(depth - 1,-beta, -alpha);
+		m_board.UndoMove(capture, undo);
+
+		if (score >= beta)
+			return beta;
+		
+		if (score > alpha)
+			alpha = score;
+	}
+
+	return alpha;
+}
+
 int Player::RootPerft(int8_t depth) {
 #if DEBUG
 	auto startTime = std::chrono::system_clock::now();
@@ -220,7 +270,8 @@ int Player::RootPerft(int8_t depth) {
 	if (depth == 0)
 		return 1;
 
-	std::vector<Move> moves = m_moveGenerator.GenerateLegalMoves();
+	MoveList moves;
+	m_moveGenerator.GenerateMoves(moves);
 
 	if (moves.size() == 0)
 		return 0;
@@ -243,9 +294,8 @@ int Player::RootPerft(int8_t depth) {
 	auto searchTimeMs = std::chrono::duration_cast<std::chrono::milliseconds>(searchTime).count();
 	auto searchTimeS = searchTimeMs / 1000.0;
 
-	std::cerr << "Log: Nodes searched: " << m_nodesSearched << '\n';
 	std::cerr << "Log: Search time (s): " << searchTimeS << '\n';
-	std::cerr << "Log: Search speed (nps): " << m_nodesSearched / searchTimeS << '\n';
+	std::cerr << "Log: Nodes per second: " << overallTotal / searchTimeS << '\n';
 #endif
 
 	return overallTotal;
@@ -255,7 +305,8 @@ int Player::Perft(int8_t depth) {
 	if (depth == 0)
 		return 1;
 
-	std::vector<Move> moves = m_moveGenerator.GenerateLegalMoves();
+	MoveList moves;
+	m_moveGenerator.GenerateMoves(moves);
 
 	if (moves.size() == 0)
 		return 0;

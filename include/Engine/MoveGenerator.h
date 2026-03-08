@@ -1,75 +1,100 @@
 #pragma once
 
-#include <vector>
+#include <array>
 
 #include "BoardRepresentation/Board.h"
 #include "Engine/MagicBitboardHelper.h"
 #include "Engine/Move.h"
 
+class MoveList {
+public:
+	inline MoveList() : m_moveList{}, m_numMoves{0} {}
+
+	Move* begin() 	{ return m_moveList.data(); }
+	Move* end() 	{ return m_moveList.data() + m_numMoves; }
+
+	const Move* begin() const { return m_moveList.data(); }
+	const Move* end() 	const { return m_moveList.data() + m_numMoves; }
+
+	inline Move& operator[](size_t i) { return m_moveList[i]; }
+	inline const Move& operator[](size_t i) const { return m_moveList[i]; }
+
+	inline size_t size() const { return m_numMoves; }
+
+	inline void clear() { m_numMoves = 0; }
+
+	inline void push_back(const Move& move) { m_moveList[m_numMoves++] = move; }
+
+private:
+	static constexpr size_t MAX_POSSIBLE_MOVES = 218;
+
+	std::array<Move, MAX_POSSIBLE_MOVES> m_moveList;
+	size_t m_numMoves;
+};
+
+struct MoveGenerationContext {
+	MoveList&													m_moves;
+	bool														m_capturesOnly;
+
+	Bitboard													m_friendlyPawnBB;
+	Bitboard 													m_friendlyKnightBB;
+	Bitboard 													m_friendlyBishopBB;
+	Bitboard 													m_friendlyRookBB;
+	Bitboard 													m_friendlyQueenBB;
+	Bitboard 													m_friendlyKingBB;
+	Square														m_friendlyKingSquare;
+
+	Bitboard 													m_enemyPawnBB;
+	Bitboard 													m_enemyKnightBB;
+	Bitboard 													m_enemyBishopBB;
+	Bitboard 													m_enemyRookBB;
+	Bitboard 													m_enemyQueenBB;
+	Bitboard 													m_enemyKingBB;
+
+	Square														m_enPassantSquare;
+	Bitboard 													m_allPieceBB;
+	Bitboard 													m_emptySquareBB;
+	Bitboard 													m_enemyPieceBB;
+	Bitboard 													m_enemyAttackSet;
+	Bitboard 													m_checkMaskBB;
+	std::array<Bitboard, static_cast<size_t>(Square::COUNT)> 	m_pinMasks;
+};
 
 class MoveGenerator {
 public:
 	MoveGenerator(Board& board);
 
-	std::vector<Move> GenerateLegalMoves();
+	bool GenerateMoves(MoveList& moves, bool capturesOnly = false) const;
 
-	std::vector<Move> OldGenerateLegalMoves();
-	std::vector<Move> GeneratePseudoMoves();
-
-	bool IsAttackedByWhite(Bitboard squares);
-	bool IsAttackedByBlack(Bitboard squares);
-
-	Bitboard GetWhiteAttackSet();
-	Bitboard GetBlackAttackSet();
+	Bitboard GetAttackSet(Bitboard pawnBB, Bitboard knightBB, Bitboard bishopBB, Bitboard rookBB, Bitboard queenBB, Bitboard kingBB, Bitboard emptySquareBB, Bitboard allPieceBB) const;
 
 private:
+	void GeneratePawnMoves(const MoveGenerationContext& context) const;
+	void GenerateWhitePawnMoves(const MoveGenerationContext& context) const;
+	void GenerateBlackPawnMoves(const MoveGenerationContext& context) const;
 
-	std::vector<Move> FilterOutIllegalWhiteMoves(std::vector<Move>& moves);
-	std::vector<Move> FilterOutIllegalBlackMoves(std::vector<Move>& moves);
+	void GenerateKnightMoves(const MoveGenerationContext& context) const;
 
-	void PrepareWhiteMoveGeneration();
-	void PrepareBlackMoveGeneration();
+	void GenerateBishopMoves(const MoveGenerationContext& context) const;
 
-	void GenerateWhitePawnMoves(std::vector<Move>& moves);
-	void GenerateWhitePawnPushes(std::vector<Move>& moves, Bitboard pawn, Bitboard push);
-	void GenerateWhitePawnCaptures(std::vector<Move>& moves, Bitboard pawn, Bitboard push);
+	void GenerateRookMoves(const MoveGenerationContext& context) const;
 
-	void GenerateBlackPawnMoves(std::vector<Move>& moves);
-	void GenerateBlackPawnPushes(std::vector<Move>& moves, Bitboard pawn, Bitboard push);
-	void GenerateBlackPawnCaptures(std::vector<Move>& moves, Bitboard pawn, Bitboard push);
+	void GenerateQueenMoves(const MoveGenerationContext& context) const;
 
-	void GenerateKnightMoves(std::vector<Move>& moves);
-	void GenerateBishopMoves(std::vector<Move>& moves);
-	void GenerateRookMoves(std::vector<Move>& moves);
-	void GenerateQueenMoves(std::vector<Move>& moves);
-	void GenerateKingMoves(std::vector<Move>& moves);
+	void GenerateKingMoves(const MoveGenerationContext& context) const;
 
-	void GenerateWhiteCastleMoves(std::vector<Move>& moves);
-	void GenerateBlackCastleMoves(std::vector<Move>& moves);
+	void GenerateCastleMoves(const MoveGenerationContext& context) const;
+	void GenerateWhiteCastleMoves(const MoveGenerationContext& context) const;
+	void GenerateBlackCastleMoves(const MoveGenerationContext& context) const;
 
-	Bitboard GetWhitePawnAttackSet(Bitboard pawns);
-	Bitboard GetBlackPawnAttackSet(Bitboard pawns);
-	Bitboard GetKnightAttackSet(Bitboard knights);
-	Bitboard GetBishopAttackSet(Bitboard bishops, Bitboard allPieces);
-	Bitboard GetRookAttackSet(Bitboard rooks, Bitboard allPieces);
-	Bitboard GetQueenAttackSet(Bitboard queens, Bitboard allPieces);
-	Bitboard GetKingAttackSet(Bitboard king);
+	Bitboard GetWhitePawnAttackSet(Bitboard pawns) const;
+	Bitboard GetBlackPawnAttackSet(Bitboard pawns) const;
+	Bitboard GetKnightAttackSet(Bitboard knights) const;
+	Bitboard GetBishopAttackSet(Bitboard bishops, Bitboard allPieces) const;
+	Bitboard GetRookAttackSet(Bitboard rooks, Bitboard allPieces) const;
+	Bitboard GetQueenAttackSet(Bitboard queens, Bitboard allPieces) const;
+	Bitboard GetKingAttackSet(Bitboard king) const;
 
 	Board& m_board;
-	MagicBitboardHelper m_magicBitboardHelper;
-
-	Bitboard m_friendlyPieces;
-	Bitboard m_enemyPieces;
-
-	Bitboard m_occupiedSquares;
-	Bitboard m_emptySquares;
-
-	Bitboard m_enemyAttackSet;
-
-	Bitboard m_pawns;
-	Bitboard m_knights;
-	Bitboard m_bishops;
-	Bitboard m_rooks;
-	Bitboard m_queens;
-	Bitboard m_king;
+	const MagicBitboardHelper m_magicBitboardHelper;
 };

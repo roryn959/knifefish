@@ -36,7 +36,7 @@ Zobrist::Zobrist() :
 void Zobrist::ApplyPieceHash(Piece piece, Square square) {
 #if DEBUG
 	if (piece == Piece::EMPTY) {
-		std::cerr << "Error - attempting to hash empty piece on square " << SquareToString(square) << '\n';
+		std::cerr << "Error - attempted to hash empty piece on square " << SquareToString(square) << '\n';
 		std::exit(1);
 	}
 #endif
@@ -55,7 +55,7 @@ void Zobrist::ApplyEnPassantHash(Square square) {
 
 #if DEBUG
 	if (m_enPassantHashes[static_cast<size_t>(square)] == 0) {
-		std::cerr << "Error - attempting to hash invalid square " << SquareToString(square) << '\n';
+		std::cerr << "Error - attempted to hash invalid square " << SquareToString(square) << '\n';
 		std::exit(1);
 	}
 #endif

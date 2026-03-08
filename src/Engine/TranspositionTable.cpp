@@ -10,6 +10,12 @@ TranspositionTable::TranspositionTable() :
 	m_table.resize(m_numEntries);
 }
 
+void TranspositionTable::Clear() {
+	for (size_t i = 0; i < m_numEntries; ++i) {
+		m_table[i] = TranspositionTableEntry { 0ULL };
+	}
+}
+
 const TranspositionTableEntry* TranspositionTable::GetEntry(Hash key) const {
 	size_t index = key & (m_numEntries - 1);
 
