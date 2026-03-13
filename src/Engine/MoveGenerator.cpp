@@ -189,7 +189,8 @@ inline void MoveGenerator::GenerateWhitePawnMoves(const MoveGenerationContext& c
 				Bitboard diagonalAttackers = m_magicBitboardHelper.GetDiagonalAttacks(context.m_friendlyKingSquare, diagonalOccupancy) & enemyDiagonalsBB;
 
 				if (diagonalAttackers.Empty()) {
-					context.m_moves.push_back(Move{pawnSquare, context.m_enPassantSquare, Piece::EMPTY, false, false, true, false});
+					int mvv_lva = ABSOLUTE_PIECE_VALUES[Piece::BLACK_PAWN] * 10 - ABSOLUTE_PIECE_VALUES[Piece::WHITE_PAWN];
+					context.m_moves.push_back(Move{CAPTURE_BASE_SCORE + mvv_lva, pawnSquare, context.m_enPassantSquare, Piece::EMPTY, false, false, true, false});
 				}
 			}
 		}
@@ -198,14 +199,20 @@ inline void MoveGenerator::GenerateWhitePawnMoves(const MoveGenerationContext& c
 		Bitboard captureBB = attackSetBB & context.m_enemyPieceBB & context.m_checkMaskBB & context.m_pinMasks[static_cast<size_t>(pawnSquare)];
 		if ((pawnBB & RANK_7).Any()) {
 			for (Square to : captureBB) {
-				context.m_moves.push_back(Move{pawnSquare, to, Piece::WHITE_KNIGHT, true, false, false, false});
-				context.m_moves.push_back(Move{pawnSquare, to, Piece::WHITE_BISHOP, true, false, false, false});
-				context.m_moves.push_back(Move{pawnSquare, to, Piece::WHITE_ROOK, true, false, false, false});
-				context.m_moves.push_back(Move{pawnSquare, to, Piece::WHITE_QUEEN, true, false, false, false});
+				Piece victim = m_board.GetPieceAtSquare(to);
+				int mvv_lva = ABSOLUTE_PIECE_VALUES[victim] * 10 - ABSOLUTE_PIECE_VALUES[Piece::WHITE_PAWN];
+
+				context.m_moves.push_back(Move{CAPTURE_BASE_SCORE + mvv_lva, pawnSquare, to, Piece::WHITE_KNIGHT, true, false, false, false});
+				context.m_moves.push_back(Move{CAPTURE_BASE_SCORE + mvv_lva, pawnSquare, to, Piece::WHITE_BISHOP, true, false, false, false});
+				context.m_moves.push_back(Move{CAPTURE_BASE_SCORE + mvv_lva, pawnSquare, to, Piece::WHITE_ROOK, true, false, false, false});
+				context.m_moves.push_back(Move{CAPTURE_BASE_SCORE + mvv_lva, pawnSquare, to, Piece::WHITE_QUEEN, true, false, false, false});
 			}
 		} else {
 			for (Square to : captureBB) {
-				context.m_moves.push_back(Move{pawnSquare, to, Piece::EMPTY, true, false, false, false});
+				Piece victim = m_board.GetPieceAtSquare(to);
+				int mvv_lva = ABSOLUTE_PIECE_VALUES[victim] * 10 - ABSOLUTE_PIECE_VALUES[Piece::WHITE_PAWN];
+
+				context.m_moves.push_back(Move{CAPTURE_BASE_SCORE + mvv_lva, pawnSquare, to, Piece::EMPTY, true, false, false, false});
 			}
 		}
 
@@ -223,13 +230,13 @@ inline void MoveGenerator::GenerateWhitePawnMoves(const MoveGenerationContext& c
 		if (pawnPushAllowedBB.Any()) {
 			Square pawnPushSquare = static_cast<Square>(pawnPushBB);
 			if ((pawnPushBB & RANK_8).Any()) {
-				context.m_moves.push_back(Move{pawnSquare, pawnPushSquare, Piece::WHITE_KNIGHT, false, false, false, false});
-				context.m_moves.push_back(Move{pawnSquare, pawnPushSquare, Piece::WHITE_BISHOP, false, false, false, false});
-				context.m_moves.push_back(Move{pawnSquare, pawnPushSquare, Piece::WHITE_ROOK, false, false, false, false});
-				context.m_moves.push_back(Move{pawnSquare, pawnPushSquare, Piece::WHITE_QUEEN, false, false, false, false});
+				context.m_moves.push_back(Move{PROMOTION_BASE_SCORE + ABSOLUTE_PIECE_VALUES[Piece::WHITE_KNIGHT], pawnSquare, pawnPushSquare, Piece::WHITE_KNIGHT, false, false, false, false});
+				context.m_moves.push_back(Move{PROMOTION_BASE_SCORE + ABSOLUTE_PIECE_VALUES[Piece::WHITE_BISHOP], pawnSquare, pawnPushSquare, Piece::WHITE_BISHOP, false, false, false, false});
+				context.m_moves.push_back(Move{PROMOTION_BASE_SCORE + ABSOLUTE_PIECE_VALUES[Piece::WHITE_ROOK], pawnSquare, pawnPushSquare, Piece::WHITE_ROOK, false, false, false, false});
+				context.m_moves.push_back(Move{PROMOTION_BASE_SCORE + ABSOLUTE_PIECE_VALUES[Piece::WHITE_QUEEN], pawnSquare, pawnPushSquare, Piece::WHITE_QUEEN, false, false, false, false});
 				continue;
 			} else {
-				context.m_moves.push_back(Move{pawnSquare, pawnPushSquare, Piece::EMPTY, false, false, false, false});
+				context.m_moves.push_back(Move{QUIET_MOVE_BASE_SCORE, pawnSquare, pawnPushSquare, Piece::EMPTY, false, false, false, false});
 			}
 		}
 
@@ -245,13 +252,14 @@ inline void MoveGenerator::GenerateWhitePawnMoves(const MoveGenerationContext& c
 		
 		if (pawnPushPushAllowedBB.Any()) {
 			Square pawnPushPushSquare = static_cast<Square>(pawnPushPushBB);
+
 			if ((pawnPushPushBB & RANK_8).Any()) {
-				context.m_moves.push_back(Move{pawnSquare, pawnPushPushSquare, Piece::WHITE_KNIGHT, false, true, false, false});
-				context.m_moves.push_back(Move{pawnSquare, pawnPushPushSquare, Piece::WHITE_BISHOP, false, true, false, false});
-				context.m_moves.push_back(Move{pawnSquare, pawnPushPushSquare, Piece::WHITE_ROOK, false, true, false, false});
-				context.m_moves.push_back(Move{pawnSquare, pawnPushPushSquare, Piece::WHITE_QUEEN, false, true, false, false});
+				context.m_moves.push_back(Move{PROMOTION_BASE_SCORE + ABSOLUTE_PIECE_VALUES[Piece::WHITE_KNIGHT], pawnSquare, pawnPushPushSquare, Piece::WHITE_KNIGHT, false, true, false, false});
+				context.m_moves.push_back(Move{PROMOTION_BASE_SCORE + ABSOLUTE_PIECE_VALUES[Piece::WHITE_BISHOP], pawnSquare, pawnPushPushSquare, Piece::WHITE_BISHOP, false, true, false, false});
+				context.m_moves.push_back(Move{PROMOTION_BASE_SCORE + ABSOLUTE_PIECE_VALUES[Piece::WHITE_ROOK], pawnSquare, pawnPushPushSquare, Piece::WHITE_ROOK, false, true, false, false});
+				context.m_moves.push_back(Move{PROMOTION_BASE_SCORE + ABSOLUTE_PIECE_VALUES[Piece::WHITE_QUEEN], pawnSquare, pawnPushPushSquare, Piece::WHITE_QUEEN, false, true, false, false});
 			} else {
-				context.m_moves.push_back(Move{pawnSquare, pawnPushPushSquare, Piece::EMPTY, false, true, false, false});
+				context.m_moves.push_back(Move{QUIET_MOVE_BASE_SCORE, pawnSquare, pawnPushPushSquare, Piece::EMPTY, false, true, false, false});
 			}
 		}
 	}
@@ -279,7 +287,8 @@ inline void MoveGenerator::GenerateBlackPawnMoves(const MoveGenerationContext& c
 				Bitboard diagonalAttackers = m_magicBitboardHelper.GetDiagonalAttacks(context.m_friendlyKingSquare, diagonalOccupancy) & enemyDiagonalsBB;
 
 				if (diagonalAttackers.Empty()) {
-					context.m_moves.push_back(Move{pawnSquare, context.m_enPassantSquare, Piece::EMPTY, false, false, true, false});
+					int mvv_lva = ABSOLUTE_PIECE_VALUES[Piece::WHITE_PAWN] * 10 - ABSOLUTE_PIECE_VALUES[Piece::BLACK_PAWN];
+					context.m_moves.push_back(Move{CAPTURE_BASE_SCORE + mvv_lva, pawnSquare, context.m_enPassantSquare, Piece::EMPTY, false, false, true, false});
 				}
 			}
 		}
@@ -288,14 +297,20 @@ inline void MoveGenerator::GenerateBlackPawnMoves(const MoveGenerationContext& c
 		Bitboard captureBB = attackSetBB & context.m_enemyPieceBB & context.m_checkMaskBB & context.m_pinMasks[static_cast<size_t>(pawnSquare)];
 		if ((pawnBB & RANK_2).Any()) {
 			for (Square to : captureBB) {
-				context.m_moves.push_back(Move{pawnSquare, to, Piece::BLACK_KNIGHT, true, false, false, false});
-				context.m_moves.push_back(Move{pawnSquare, to, Piece::BLACK_BISHOP, true, false, false, false});
-				context.m_moves.push_back(Move{pawnSquare, to, Piece::BLACK_ROOK, true, false, false, false});
-				context.m_moves.push_back(Move{pawnSquare, to, Piece::BLACK_QUEEN, true, false, false, false});
+				Piece victim = m_board.GetPieceAtSquare(to);
+				int mvv_lva = ABSOLUTE_PIECE_VALUES[victim] * 10 - ABSOLUTE_PIECE_VALUES[Piece::BLACK_PAWN];
+
+				context.m_moves.push_back(Move{CAPTURE_BASE_SCORE + mvv_lva, pawnSquare, to, Piece::BLACK_KNIGHT, true, false, false, false});
+				context.m_moves.push_back(Move{CAPTURE_BASE_SCORE + mvv_lva, pawnSquare, to, Piece::BLACK_BISHOP, true, false, false, false});
+				context.m_moves.push_back(Move{CAPTURE_BASE_SCORE + mvv_lva, pawnSquare, to, Piece::BLACK_ROOK, true, false, false, false});
+				context.m_moves.push_back(Move{CAPTURE_BASE_SCORE + mvv_lva, pawnSquare, to, Piece::BLACK_QUEEN, true, false, false, false});
 			}
 		} else {
 			for (Square to : captureBB) {
-				context.m_moves.push_back(Move{pawnSquare, to, Piece::EMPTY, true, false, false, false});
+				Piece victim = m_board.GetPieceAtSquare(to);
+				int mvv_lva = ABSOLUTE_PIECE_VALUES[victim] * 10 - ABSOLUTE_PIECE_VALUES[Piece::BLACK_PAWN];
+
+				context.m_moves.push_back(Move{CAPTURE_BASE_SCORE + mvv_lva, pawnSquare, to, Piece::EMPTY, true, false, false, false});
 			}
 		}
 
@@ -310,13 +325,13 @@ inline void MoveGenerator::GenerateBlackPawnMoves(const MoveGenerationContext& c
 		if (pawnPushAllowedBB.Any()) {
 			Square pawnPushSquare = static_cast<Square>(pawnPushBB);
 			if ((pawnPushBB & RANK_1).Any()) {
-				context.m_moves.push_back(Move{pawnSquare, pawnPushSquare, Piece::BLACK_KNIGHT, false, false, false, false});
-				context.m_moves.push_back(Move{pawnSquare, pawnPushSquare, Piece::BLACK_BISHOP, false, false, false, false});
-				context.m_moves.push_back(Move{pawnSquare, pawnPushSquare, Piece::BLACK_ROOK, false, false, false, false});
-				context.m_moves.push_back(Move{pawnSquare, pawnPushSquare, Piece::BLACK_QUEEN, false, false, false, false});
+				context.m_moves.push_back(Move{PROMOTION_BASE_SCORE + ABSOLUTE_PIECE_VALUES[Piece::BLACK_KNIGHT], pawnSquare, pawnPushSquare, Piece::BLACK_KNIGHT, false, false, false, false});
+				context.m_moves.push_back(Move{PROMOTION_BASE_SCORE + ABSOLUTE_PIECE_VALUES[Piece::BLACK_BISHOP], pawnSquare, pawnPushSquare, Piece::BLACK_BISHOP, false, false, false, false});
+				context.m_moves.push_back(Move{PROMOTION_BASE_SCORE + ABSOLUTE_PIECE_VALUES[Piece::BLACK_ROOK], pawnSquare, pawnPushSquare, Piece::BLACK_ROOK, false, false, false, false});
+				context.m_moves.push_back(Move{PROMOTION_BASE_SCORE + ABSOLUTE_PIECE_VALUES[Piece::BLACK_QUEEN], pawnSquare, pawnPushSquare, Piece::BLACK_QUEEN, false, false, false, false});
 				continue;
 			} else {
-				context.m_moves.push_back(Move{pawnSquare, pawnPushSquare, Piece::EMPTY, false, false, false, false});
+				context.m_moves.push_back(Move{QUIET_MOVE_BASE_SCORE, pawnSquare, pawnPushSquare, Piece::EMPTY, false, false, false, false});
 			}
 		}
 
@@ -333,12 +348,12 @@ inline void MoveGenerator::GenerateBlackPawnMoves(const MoveGenerationContext& c
 		if (pawnPushPushAllowedBB.Any()) {
 			Square pawnPushPushSquare = static_cast<Square>(pawnPushPushBB);
 			if ((pawnPushPushBB & RANK_1).Any()) {
-				context.m_moves.push_back(Move{pawnSquare, pawnPushPushSquare, Piece::WHITE_KNIGHT, false, true, false, false});
-				context.m_moves.push_back(Move{pawnSquare, pawnPushPushSquare, Piece::WHITE_BISHOP, false, true, false, false});
-				context.m_moves.push_back(Move{pawnSquare, pawnPushPushSquare, Piece::WHITE_ROOK, false, true, false, false});
-				context.m_moves.push_back(Move{pawnSquare, pawnPushPushSquare, Piece::WHITE_QUEEN, false, true, false, false});
+				context.m_moves.push_back(Move{PROMOTION_BASE_SCORE + ABSOLUTE_PIECE_VALUES[Piece::BLACK_KNIGHT], pawnSquare, pawnPushPushSquare, Piece::BLACK_KNIGHT, false, true, false, false});
+				context.m_moves.push_back(Move{PROMOTION_BASE_SCORE + ABSOLUTE_PIECE_VALUES[Piece::BLACK_BISHOP], pawnSquare, pawnPushPushSquare, Piece::BLACK_BISHOP, false, true, false, false});
+				context.m_moves.push_back(Move{PROMOTION_BASE_SCORE + ABSOLUTE_PIECE_VALUES[Piece::BLACK_ROOK], pawnSquare, pawnPushPushSquare, Piece::BLACK_ROOK, false, true, false, false});
+				context.m_moves.push_back(Move{PROMOTION_BASE_SCORE + ABSOLUTE_PIECE_VALUES[Piece::BLACK_QUEEN], pawnSquare, pawnPushPushSquare, Piece::BLACK_QUEEN, false, true, false, false});
 			} else {
-				context.m_moves.push_back(Move{pawnSquare, pawnPushPushSquare, Piece::EMPTY, false, true, false, false});
+				context.m_moves.push_back(Move{QUIET_MOVE_BASE_SCORE, pawnSquare, pawnPushPushSquare, Piece::EMPTY, false, true, false, false});
 			}
 		}
 	}
@@ -354,7 +369,10 @@ inline void MoveGenerator::GenerateKnightMoves(const MoveGenerationContext& cont
 
 		Bitboard captureBB = possibleMoveBB & context.m_enemyPieceBB;
 		for (Square to : captureBB) {
-			context.m_moves.push_back(Move{knightSquare, to, Piece::EMPTY, true, false, false, false});
+			Piece victim = m_board.GetPieceAtSquare(to);
+			int mvv_lva = ABSOLUTE_PIECE_VALUES[victim] * 10 - ABSOLUTE_PIECE_VALUES[WHITE_KNIGHT];
+
+			context.m_moves.push_back(Move{CAPTURE_BASE_SCORE + mvv_lva, knightSquare, to, Piece::EMPTY, true, false, false, false});
 		}
 
 		if (context.m_capturesOnly)
@@ -362,7 +380,7 @@ inline void MoveGenerator::GenerateKnightMoves(const MoveGenerationContext& cont
 
 		Bitboard quietMoveBB = possibleMoveBB & context.m_emptySquareBB;
 		for (Square to : quietMoveBB) {
-			context.m_moves.push_back(Move{knightSquare, to, Piece::EMPTY, false, false, false, false});
+			context.m_moves.push_back(Move{QUIET_MOVE_BASE_SCORE, knightSquare, to, Piece::EMPTY, false, false, false, false});
 		}
 	}
 }
@@ -378,7 +396,10 @@ inline void MoveGenerator::GenerateBishopMoves(const MoveGenerationContext& cont
 
 		Bitboard captureBB = possibleMoveBB & context.m_enemyPieceBB;
 		for (Square to : captureBB) {
-			context.m_moves.push_back(Move{bishopSquare, to, Piece::EMPTY, true, false, false, false});
+			Piece victim = m_board.GetPieceAtSquare(to);
+			int mvv_lva = ABSOLUTE_PIECE_VALUES[victim] * 10 - ABSOLUTE_PIECE_VALUES[WHITE_BISHOP];
+
+			context.m_moves.push_back(Move{CAPTURE_BASE_SCORE + mvv_lva, bishopSquare, to, Piece::EMPTY, true, false, false, false});
 		}
 
 		if (context.m_capturesOnly)
@@ -386,7 +407,7 @@ inline void MoveGenerator::GenerateBishopMoves(const MoveGenerationContext& cont
 
 		Bitboard quietMoveBB = possibleMoveBB & context.m_emptySquareBB;
 		for (Square to : quietMoveBB) {
-			context.m_moves.push_back(Move{bishopSquare, to, Piece::EMPTY, false, false, false, false});
+			context.m_moves.push_back(Move{QUIET_MOVE_BASE_SCORE, bishopSquare, to, Piece::EMPTY, false, false, false, false});
 		}
 	}
 }
@@ -402,7 +423,10 @@ inline void MoveGenerator::GenerateRookMoves(const MoveGenerationContext& contex
 
 		Bitboard captureBB = possibleMoveBB & context.m_enemyPieceBB;
 		for (Square to : captureBB) {
-			context.m_moves.push_back(Move{rookSquare, to, Piece::EMPTY, true, false, false, false});
+			Piece victim = m_board.GetPieceAtSquare(to);
+			int mvv_lva = ABSOLUTE_PIECE_VALUES[victim] * 10 - ABSOLUTE_PIECE_VALUES[WHITE_ROOK];
+
+			context.m_moves.push_back(Move{CAPTURE_BASE_SCORE + mvv_lva, rookSquare, to, Piece::EMPTY, true, false, false, false});
 		}
 
 		if (context.m_capturesOnly)
@@ -410,7 +434,7 @@ inline void MoveGenerator::GenerateRookMoves(const MoveGenerationContext& contex
 
 		Bitboard quietMoveBB = possibleMoveBB & context.m_emptySquareBB;
 		for (Square to : quietMoveBB) {
-			context.m_moves.push_back(Move{rookSquare, to, Piece::EMPTY, false, false, false, false});
+			context.m_moves.push_back(Move{QUIET_MOVE_BASE_SCORE, rookSquare, to, Piece::EMPTY, false, false, false, false});
 		}
 	}
 }
@@ -432,7 +456,10 @@ inline void MoveGenerator::GenerateQueenMoves(const MoveGenerationContext& conte
 
 		Bitboard captureBB = possibleMoveBB & context.m_enemyPieceBB;
 		for (Square to : captureBB) {
-			context.m_moves.push_back(Move{queenSquare, to, Piece::EMPTY, true, false, false, false});
+			Piece victim = m_board.GetPieceAtSquare(to);
+			int mvv_lva = ABSOLUTE_PIECE_VALUES[victim] * 10 - ABSOLUTE_PIECE_VALUES[WHITE_QUEEN];
+
+			context.m_moves.push_back(Move{CAPTURE_BASE_SCORE + mvv_lva, queenSquare, to, Piece::EMPTY, true, false, false, false});
 		}
 
 		if (context.m_capturesOnly)
@@ -440,7 +467,7 @@ inline void MoveGenerator::GenerateQueenMoves(const MoveGenerationContext& conte
 
 		Bitboard quietMoveBB = possibleMoveBB & context.m_emptySquareBB;
 		for (Square to : quietMoveBB) {
-			context.m_moves.push_back(Move{queenSquare, to, Piece::EMPTY, false, false, false, false});
+			context.m_moves.push_back(Move{QUIET_MOVE_BASE_SCORE, queenSquare, to, Piece::EMPTY, false, false, false, false});
 		}
 	}
 }
@@ -452,7 +479,9 @@ inline void MoveGenerator::GenerateKingMoves(const MoveGenerationContext& contex
 
 	Bitboard captures = possibleMoveBB & context.m_enemyPieceBB;
 	for (Square to : captures) {
-		context.m_moves.push_back(Move{context.m_friendlyKingSquare, to, Piece::EMPTY, true, false, false, false});
+		Piece victim = m_board.GetPieceAtSquare(to);
+		int mvv_lva = ABSOLUTE_PIECE_VALUES[victim] * 10 - ABSOLUTE_PIECE_VALUES[WHITE_KING];
+		context.m_moves.push_back(Move{CAPTURE_BASE_SCORE + mvv_lva, context.m_friendlyKingSquare, to, Piece::EMPTY, true, false, false, false});
 	}
 
 	if (context.m_capturesOnly)
@@ -460,7 +489,7 @@ inline void MoveGenerator::GenerateKingMoves(const MoveGenerationContext& contex
 		
 	Bitboard quietMoves = possibleMoveBB & context.m_emptySquareBB;
 	for (Square to : quietMoves) {
-		context.m_moves.push_back(Move{context.m_friendlyKingSquare, to, Piece::EMPTY, false, false, false, false});
+		context.m_moves.push_back(Move{QUIET_MOVE_BASE_SCORE, context.m_friendlyKingSquare, to, Piece::EMPTY, false, false, false, false});
 	}
 
 }
@@ -480,7 +509,7 @@ void MoveGenerator::GenerateWhiteCastleMoves(const MoveGenerationContext& contex
 		bool isKingsideClear = (context.m_allPieceBB & WHITE_KINGSIDE_CASTLE_SPACE_MASK).Empty();
 		bool isNotThroughCheck = (context.m_enemyAttackSet & WHITE_KINGSIDE_CASTLE_CHECKS_MASK).Empty();
 		if (isKingsideClear && isNotThroughCheck) {
-			context.m_moves.push_back(Move{context.m_friendlyKingSquare, Square::g1, Piece::EMPTY, false, false, false, true});
+			context.m_moves.push_back(Move{QUIET_MOVE_BASE_SCORE, context.m_friendlyKingSquare, Square::g1, Piece::EMPTY, false, false, false, true});
 		}
 	}
 
@@ -488,7 +517,7 @@ void MoveGenerator::GenerateWhiteCastleMoves(const MoveGenerationContext& contex
 		bool isQueensideClear = (context.m_allPieceBB & WHITE_QUEENSIDE_CASTLE_SPACE_MASK).Empty();
 		bool isNotThroughCheck = (context.m_enemyAttackSet & WHITE_QUEENSIDE_CASTLE_CHECKS_MASK).Empty();
 		if (isQueensideClear && isNotThroughCheck) {
-			context.m_moves.push_back(Move{context.m_friendlyKingSquare, Square::c1, Piece::EMPTY, false, false, false, true});
+			context.m_moves.push_back(Move{QUIET_MOVE_BASE_SCORE, context.m_friendlyKingSquare, Square::c1, Piece::EMPTY, false, false, false, true});
 		}
 	}
 }
@@ -498,7 +527,7 @@ void MoveGenerator::GenerateBlackCastleMoves(const MoveGenerationContext& contex
 		bool isKingsideClear = (context.m_allPieceBB & BLACK_KINGSIDE_CASTLE_SPACE_MASK).Empty();
 		bool isNotThroughCheck = (context.m_enemyAttackSet & BLACK_KINGSIDE_CASTLE_CHECKS_MASK).Empty();
 		if (isKingsideClear && isNotThroughCheck) {
-			context.m_moves.push_back(Move{context.m_friendlyKingSquare, Square::g8, Piece::EMPTY, false, false, false, true});
+			context.m_moves.push_back(Move{QUIET_MOVE_BASE_SCORE, context.m_friendlyKingSquare, Square::g8, Piece::EMPTY, false, false, false, true});
 		}
 	}
 
@@ -506,7 +535,7 @@ void MoveGenerator::GenerateBlackCastleMoves(const MoveGenerationContext& contex
 		bool isQueensideClear = (context.m_allPieceBB & BLACK_QUEENSIDE_CASTLE_SPACE_MASK).Empty();
 		bool isNotThroughCheck = (context.m_enemyAttackSet & BLACK_QUEENSIDE_CASTLE_CHECKS_MASK).Empty();
 		if (isQueensideClear && isNotThroughCheck) {
-			context.m_moves.push_back(Move{context.m_friendlyKingSquare, Square::c8, Piece::EMPTY, false, false, false, true});
+			context.m_moves.push_back(Move{QUIET_MOVE_BASE_SCORE, context.m_friendlyKingSquare, Square::c8, Piece::EMPTY, false, false, false, true});
 		}
 	}
 }

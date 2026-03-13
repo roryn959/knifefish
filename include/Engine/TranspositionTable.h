@@ -14,6 +14,7 @@ enum class EvaluationType : uint8_t {
 };
 
 struct TranspositionTableEntry {
+	Move			m_move;
 	Hash 			m_key;
 	int16_t 		m_score;
 	int8_t 			m_depth;

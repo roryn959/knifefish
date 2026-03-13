@@ -75,11 +75,17 @@ Move Player::IterativeDeepening(int8_t maxDepth) {
 	m_isStopped = false;
 
 	// Initialise PV move to garbage move that will never clash with anything
-	Move movePv{ Square::a1, Square::a1 };
+	Move movePv{ QUIET_MOVE_BASE_SCORE, Square::a1, Square::a1 };
 	int16_t bestScore = -MAX_SCORE;
 	int8_t depth = 1;
 
 	while (depth <= maxDepth) {
+	
+#if DEBUG
+		m_currentDepthNodes = 0;
+		m_quiescenceNodesSearched = 0;
+#endif
+
 		Move bestMove;
 		int16_t score = RootNegamax(depth, movePv, bestMove);
 
@@ -91,6 +97,13 @@ Move Player::IterativeDeepening(int8_t maxDepth) {
 		}
 
 		++depth;
+
+#if DEBUG
+		std::cerr << "Log: Current depth nodes: " << m_currentDepthNodes << '\n';
+		std::cerr << "Log: Current depth quiescence nodes searched: " << m_quiescenceNodesSearched << '\n';
+		float ebf = pow(m_currentDepthNodes, (1.0f / depth));
+		std::cerr << "Log: EBF: " << ebf << "\n\n"; 
+#endif
 	}
 
 	return movePv;
@@ -98,6 +111,7 @@ Move Player::IterativeDeepening(int8_t maxDepth) {
 
 int16_t Player::RootNegamax(int8_t depth, const Move& movePv, Move& bestMove) {
 #if DEBUG
+	++m_currentDepthNodes;
 	m_transpositionsHit = 0;
 	std::cerr << "Log: Called root Negamax with depth " << (int) depth << '\n';
 #endif
@@ -111,21 +125,34 @@ int16_t Player::RootNegamax(int8_t depth, const Move& movePv, Move& bestMove) {
 		return check ? -MATE_SCORE : 0;
 	}
 
-	// Reorder with PV move first
+	std::array<int, MoveList::MAX_POSSIBLE_MOVES> staticScores;
+
 	for (int i = 0; i < moves.size(); ++i) {
 		if (moves[i] == movePv) {
-			Move temp = moves[0];
-			moves[0] = moves[i];
-			moves[i] = temp;
-			break;
+			staticScores[i] = PV_MOVE_BASE_SCORE;
+		} else {
+			staticScores[i] = moves[i].m_score;
 		}
+
 	}
 
 	int16_t bestScore = -MAX_SCORE;
 	int16_t alpha = -MAX_SCORE;
 	int16_t beta = MAX_SCORE;
 
-	for (const Move& move : moves) {
+	for (int i = 0; i < moves.size(); ++i) {
+
+		int best = i;
+		for (int j = i + 1; j < moves.size(); ++j) {
+			if (staticScores[j] > staticScores[best])
+				best = j;
+		}
+
+		std::swap(moves[i], moves[best]);
+		std::swap(staticScores[i], staticScores[best]);
+
+		const Move& move = moves[i];
+
 		Undo undo = m_board.MakeMove(move);
 		int16_t score = -Negamax(depth - 1, -beta, -alpha);
 		m_board.UndoMove(move, undo);
@@ -144,25 +171,29 @@ int16_t Player::RootNegamax(int8_t depth, const Move& movePv, Move& bestMove) {
 
 #if DEBUG
 	std::cerr << "Log: Negamax depth " << (int) depth << " returned an evaluation of " << bestScore << "\n";
-	std::cerr << "Log: Negamax " << (int) depth << " found the best move to be " << bestMove << '\n';
+	std::cerr << "Log: Negamax " << (int) depth << " found the best move to be " << bestMove;
 #endif
 
 	return bestScore;
 }
 
 int16_t Player::Negamax(int8_t depth, int16_t alpha, int16_t beta) {
+	++m_nodesSearched;
+#if DEBUG
+	++m_currentDepthNodes;
+#endif
 
 	if (((m_nodesSearched % 2048) == 0) && (Clock::now() >= m_deadline)) {
 		m_isStopped = true;
 		return 0;
 	}
 
-	++m_nodesSearched;
-
 	Hash hash = m_board.GetHash();
 	const TranspositionTableEntry* pEntry = m_transpositionTable.GetEntry(hash);
 
-	if ((pEntry != nullptr) && (pEntry->m_depth >= depth)) {
+	bool isTransposition = pEntry != nullptr;
+
+	if (isTransposition && (pEntry->m_depth >= depth)) {
 		switch (pEntry->m_evaluationType) {
 			case EvaluationType::EXACT: {
 #if DEBUG
@@ -193,15 +224,35 @@ int16_t Player::Negamax(int8_t depth, int16_t alpha, int16_t beta) {
 	}
 
 	if (depth == 0)
-		return Quiescence(10, alpha, beta);
+		return Quiescence(alpha, beta);
+
+	std::array<int, MoveList::MAX_POSSIBLE_MOVES> staticScores;
+
+	for (int i = 0; i < moves.size(); ++i) {
+		if (isTransposition && (moves[i] == pEntry->m_move)) {
+			staticScores[i] = TT_MOVE_BASE_SCORE;
+		} else {
+			staticScores[i] = moves[i].m_score;
+		}
+	}
 
 	int16_t bestScore = -MAX_SCORE;
 	Move bestMove;
 	EvaluationType evaluationType = EvaluationType::UPPER_BOUND;
 
-	for (const Move& move : moves) {
-		// In this context, alpha is the score we (max) are currently guaranteed. Beta is the score the other guy (min) is guaranteed.
-		// So when we call deeper, we swap them and negate them because the role of maximiser is switched, and the scores should be viewed from the other way round.
+	for (int i = 0; i < moves.size(); ++i) {
+
+		int best = i;
+		for (int j = i + 1; j < moves.size(); ++j) {
+			if (staticScores[j] > staticScores[best])
+				best = j;
+		}
+
+		std::swap(moves[i], moves[best]);
+		std::swap(staticScores[i], staticScores[best]);
+
+		const Move& move = moves[i];
+
 		Undo undo = m_board.MakeMove(move);
 		int16_t score = -Negamax(depth - 1, -beta, -alpha);
 		m_board.UndoMove(move, undo);
@@ -216,7 +267,6 @@ int16_t Player::Negamax(int8_t depth, int16_t alpha, int16_t beta) {
 
 		}
 
-		// The score we (max) get is better for us than the score the other guy (min) is already guaranteed, so he will never take it! Stop searching
 		if (score >= beta) {
 			evaluationType = EvaluationType::LOWER_BOUND;
 			break;
@@ -224,6 +274,7 @@ int16_t Player::Negamax(int8_t depth, int16_t alpha, int16_t beta) {
 	}
 
 	TranspositionTableEntry entry {
+		bestMove,
 		hash,
 		bestScore,
 		depth,
@@ -235,10 +286,46 @@ int16_t Player::Negamax(int8_t depth, int16_t alpha, int16_t beta) {
 	return bestScore;
 }
 
-int16_t Player::Quiescence(int8_t depth, int16_t alpha, int16_t beta) {
+int16_t Player::Quiescence(int16_t alpha, int16_t beta) {
+	++m_nodesSearched;
+#if DEBUG
+	++m_quiescenceNodesSearched;
+	++m_currentDepthNodes;
+#endif
+
+	int8_t depth = 0;
+
+	Hash hash = m_board.GetHash();
+	const TranspositionTableEntry* pEntry = m_transpositionTable.GetEntry(hash);
+
+	bool isTransposition = pEntry != nullptr;
+
+	if (isTransposition) {
+		switch (pEntry->m_evaluationType) {
+			case EvaluationType::EXACT: {
+#if DEBUG
+				++m_transpositionsHit;
+#endif
+				return pEntry->m_score;
+			}
+			case EvaluationType::LOWER_BOUND: {
+				if (pEntry->m_score >= beta)
+					return pEntry->m_score;
+				alpha = std::max(alpha, pEntry->m_score);
+				break;
+			}
+			case EvaluationType::UPPER_BOUND: {
+				if (pEntry->m_score <= alpha)
+					return pEntry->m_score;
+				beta = std::min(beta, pEntry->m_score);
+				break;
+			}
+		}
+	}
+
 	int16_t eval = Evaluate();
 
-	if (depth == 0 || eval >= beta)
+	if (eval >= beta)
 		return beta;
 
 	if (eval > alpha)
@@ -247,17 +334,58 @@ int16_t Player::Quiescence(int8_t depth, int16_t alpha, int16_t beta) {
 	MoveList captures;
 	m_moveGenerator.GenerateMoves(captures, true);
 
-	for (const Move& capture : captures) {
+	std::array<int, MoveList::MAX_POSSIBLE_MOVES> staticScores;
+
+	for (int i = 0; i < captures.size(); ++i) {
+		if (isTransposition && (captures[i] == pEntry->m_move)) {
+			staticScores[i] = TT_MOVE_BASE_SCORE;
+		} else {
+			staticScores[i] = captures[i].m_score;
+		}
+	}
+
+	int16_t bestScore = -MAX_SCORE;
+	Move bestMove;
+	EvaluationType evaluationType = EvaluationType::UPPER_BOUND;
+
+	for (int i = 0; i < captures.size(); ++i) {
+		int best = i;
+		for (int j = i + 1; j < captures.size(); ++j) {
+			if (staticScores[j] > staticScores[best])
+				best = j;
+		}
+
+		std::swap(captures[i], captures[best]);
+		std::swap(staticScores[i], staticScores[best]);
+
+		const Move& capture = captures[i];
+
+		int victimScore = ABSOLUTE_PIECE_VALUES[m_board.GetPieceAtSquare(capture.m_to)];
+		if ((eval + victimScore + DELTA_PRUNE_MARGIN) < alpha)
+			continue;
+
 		Undo undo = m_board.MakeMove(capture);
-		int16_t score = -Quiescence(depth - 1,-beta, -alpha);
+		int16_t score = -Quiescence(-beta, -alpha);
 		m_board.UndoMove(capture, undo);
 
 		if (score >= beta)
 			return beta;
 		
-		if (score > alpha)
+		if (score > alpha) {
+			bestMove = capture;
 			alpha = score;
+		}
 	}
+
+	TranspositionTableEntry entry {
+		bestMove,
+		hash,
+		bestScore,
+		depth,
+		evaluationType
+	};
+
+	m_transpositionTable.SetEntry(hash, entry);
 
 	return alpha;
 }

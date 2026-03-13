@@ -26,6 +26,8 @@ constexpr int SecsToMillisecs(double secs) { return round(secs * 1000.0); }
 
 #define TIME_CHECK_FREQUENCY 2048
 
+#define DELTA_PRUNE_MARGIN 200
+
 constexpr int16_t MATE_SCORE { 30'000 };
 constexpr int16_t MAX_SCORE { 32'000 };
 constexpr std::array<int, 12> PIECE_VALUES = { 100, 320, 330, 500, 900, 10000, -100, -320, -330, -500, -900, -10000 };
@@ -145,7 +147,7 @@ private:
 	int16_t RootNegamax(int8_t depth, const Move& movePv, Move& bestMove);
 	int16_t Negamax(int8_t depth, int16_t alpha, int16_t beta);
 
-	int16_t Quiescence(int8_t depth, int16_t alpha, int16_t beta);
+	int16_t Quiescence(int16_t alpha, int16_t beta);
 
 	int Perft(int8_t depth);
 
@@ -160,5 +162,7 @@ private:
 
 #if DEBUG
 	int m_transpositionsHit;
+	int m_currentDepthNodes;
+	int m_quiescenceNodesSearched;
 #endif
 };

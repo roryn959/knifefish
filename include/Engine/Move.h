@@ -8,6 +8,7 @@
 
 
 struct Move {
+	int			m_score;
 	Square		m_from;
 	Square		m_to;
 	Piece		m_promotionPiece;

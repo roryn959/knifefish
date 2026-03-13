@@ -32,6 +32,10 @@ do {																				\
 
 typedef std::array<bool, static_cast<size_t>(CastlePermission::COUNT)> CastlePermissionsList;
 
+struct Location {
+	Square m_square;
+	Bitboard m_bitboard;
+};
 
 class Board {
 public:
@@ -46,8 +50,7 @@ public:
 	Bitboard GetWhitePieceBitboard() const;
 	Bitboard GetBlackPieceBitboard() const;
 
-	Piece GetWhitePieceAtSquare(Bitboard bb);
-	Piece GetBlackPieceAtSquare(Bitboard bb);
+	Piece GetPieceAtSquare(Square square) { return m_boardPieces[static_cast<size_t>(square)]; }
 
 	Hash GetHash() const noexcept { return m_zobrist.GetHash(); }
 	void RebuildHash();
@@ -69,21 +72,24 @@ public:
 	friend std::ostream& operator<<(std::ostream& os, const Board& board);
 
 private:
-	void DoCapture(Bitboard from, Bitboard to, Undo& undo);
-	void DoEnPassantCapture(Bitboard to);
-	void DoDoublePawnPush(Bitboard to);
-	void MakeCastleMove(Bitboard to);
-	void MakePromotionMove(Bitboard from, Bitboard to, Piece promotionPiece);
-	void MakeQuietMove(Bitboard from, Bitboard to);
+	void DoCapture(const Location& from, const Location& to, Undo& undo);
+	void DoEnPassantCapture(const Location& to);
+	void DoDoublePawnPush(const Location& to);
+	void MakeCastleMove(const Location& to);
+	void MakePromotionMove(const Location& from, const Location& to, Piece promotionPiece);
+	void MakeQuietMove(const Location& from, const Location& to);
 
-	void UndoCapture(Bitboard to, Piece capturedPiece);
-	void UndoEnPassantCapture(Bitboard to);
-	void UndoCastleMove(Bitboard to);
-	void UndoPromotionMove(Bitboard from, Bitboard to, Piece promotionPiece);
-	void UndoNormalMove(Bitboard from, Bitboard to);
+	void UndoCapture(const Location& to, Piece capturedPiece);
+	void UndoEnPassantCapture(const Location& to);
+	void UndoCastleMove(const Location& to);
+	void UndoPromotionMove(const Location& from, const Location& to, Piece promotionPiece);
+	void UndoNormalMove(const Location& from, const Location& to);
 
-	bool PickUp(Piece piece, Bitboard bb);
-	bool PutDown(Piece piece, Bitboard bb);
+	bool PickUp(Piece piece, const Location& loc);
+	inline bool PickUp(Piece piece, Bitboard bb) { return PickUp(piece, Location{ static_cast<Square>(bb), bb }); }
+
+	bool PutDown(Piece piece, const Location& loc);
+	inline bool PutDown(Piece piece, Bitboard bb) { return PutDown(piece, Location{ static_cast<Square>(bb), bb }); }
 
 #if DEBUG
 	bool CheckBoardOccupancy() const;
@@ -91,6 +97,8 @@ private:
 #endif
 
 	std::array<Bitboard, Piece::NUM_PIECES> m_pieceBitboards;
+	std::array<Piece, static_cast<size_t>(Square::COUNT)> m_boardPieces;
+
 	std::array<bool, static_cast<size_t>(CastlePermission::COUNT)> m_castlePermissions;
 	Square m_enPassantSquare;
 	bool m_isWhiteTurn;

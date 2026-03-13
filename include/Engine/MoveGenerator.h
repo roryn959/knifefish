@@ -6,8 +6,19 @@
 #include "Engine/MagicBitboardHelper.h"
 #include "Engine/Move.h"
 
+#define PV_MOVE_BASE_SCORE 25'000
+#define TT_MOVE_BASE_SCORE 20'000
+#define CAPTURE_BASE_SCORE 15'000
+#define PROMOTION_BASE_SCORE 10'000
+#define KILLER_MOVE_BASE_SCORE 5'000
+#define QUIET_MOVE_BASE_SCORE 0
+
+constexpr std::array<int, 12> ABSOLUTE_PIECE_VALUES = { 100, 320, 330, 500, 900, 10000, 100, 320, 330, 500, 900, 10000 };
+
 class MoveList {
 public:
+	static constexpr size_t MAX_POSSIBLE_MOVES = 218;
+
 	inline MoveList() : m_moveList{}, m_numMoves{0} {}
 
 	Move* begin() 	{ return m_moveList.data(); }
@@ -26,8 +37,6 @@ public:
 	inline void push_back(const Move& move) { m_moveList[m_numMoves++] = move; }
 
 private:
-	static constexpr size_t MAX_POSSIBLE_MOVES = 218;
-
 	std::array<Move, MAX_POSSIBLE_MOVES> m_moveList;
 	size_t m_numMoves;
 };
