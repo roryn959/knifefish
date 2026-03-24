@@ -43,6 +43,8 @@ void Board::SetUpStartPosition() {
 	CASTLE_PERMISSIONS_LIST
 	#undef X
 
+	m_phase = START_PHASE;
+
 	m_zobrist.ApplyEnPassantHash(m_enPassantSquare);
 
 	m_zobrist.ApplyWhiteTurnHash();
@@ -245,6 +247,8 @@ void Board::DoCapture(const Location& from, const Location& to, Undo& undo) {
 			SetCastlePermission(CastlePermission::BLACK_KINGSIDE, false);
 		}
 	}
+
+	ProgressPhase(piece);
 }
 
 void Board::DoEnPassantCapture(const Location& to) {
@@ -313,8 +317,11 @@ void Board::MakeCastleMove(const Location& to) {
 
 void Board::MakePromotionMove(const Location& from, const Location& to, Piece promotionPiece) {
 	Piece pawn = IsWhiteTurn() ? Piece::WHITE_PAWN : Piece::BLACK_PAWN;
+
 	SAFE_CALL(PickUp(pawn, from));
 	SAFE_CALL(PutDown(promotionPiece, to));
+
+	RegressPhase(promotionPiece);
 }
 
 void Board::MakeQuietMove(const Location& from, const Location& to) {
@@ -373,6 +380,8 @@ void Board::UndoMove(const Move& move, const Undo& undo) {
 
 void Board::UndoCapture(const Location& to, Piece capturedPiece) {
 	SAFE_CALL(PutDown(capturedPiece, to));
+
+	RegressPhase(capturedPiece);
 }
 
 void Board::UndoEnPassantCapture(const Location& to) {
@@ -418,6 +427,8 @@ void Board::UndoPromotionMove(const Location& from, const Location& to, Piece pr
 
 	SAFE_CALL(PickUp(promotionPiece, to));
 	SAFE_CALL(PutDown(pawn, from));
+
+	ProgressPhase(promotionPiece);
 }
 
 void Board::UndoNormalMove(const Location& from, const Location& to) {

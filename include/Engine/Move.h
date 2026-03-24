@@ -17,7 +17,15 @@ struct Move {
 	bool		m_isEnPassant;
 	bool		m_isCastle;
 
-	inline bool operator==(const Move& rhs) noexcept { return ToString() == rhs.ToString(); }
+	inline bool operator==(const Move& rhs) const noexcept {
+		return m_from == rhs.m_from
+			&& m_to == rhs.m_to
+			&& m_promotionPiece == rhs.m_promotionPiece
+			&& m_isCapture == rhs.m_isCapture
+			&& m_isDoublePawnPush == rhs.m_isDoublePawnPush
+			&& m_isEnPassant == rhs.m_isEnPassant
+			&& m_isCastle == rhs.m_isCastle;
+	}
 
 	std::string ToString() const;
 };

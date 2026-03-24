@@ -5,16 +5,29 @@ Player::Player(Board& board) :
 	m_board{board},
 	m_moveGenerator{m_board},
 	m_transpositionTable{},
+	m_killers{},
 	m_nodesSearched{0},
 	m_deadline{},
 	m_isStopped{false}
-{}
+{
+	InitialisePieceSquareTables();
+}
+
+void Player::InitialisePieceSquareTables() {
+	#define X(piece) 																																									\
+	for (size_t i = static_cast<size_t>(Square::h1); i < static_cast<size_t>(Square::COUNT); ++i) {																						\
+		m_midgamePieceSquareTables[static_cast<size_t>(Piece::piece)][i] = MG_PIECE_VALUES[static_cast<size_t>(Piece::piece)] - MG_PST_LIST[static_cast<size_t>(Piece::piece)][i]; 		\
+		m_endgamePieceSquareTables[static_cast<size_t>(Piece::piece)][i] = EG_PIECE_VALUES[static_cast<size_t>(Piece::piece)] - EG_PST_LIST[static_cast<size_t>(Piece::piece)][i];		\
+	}
+	PIECES_LIST
+	#undef X
+}
 
 Move Player::Go(int depth, int wtime, int btime, int winc, int binc, int movestogo, int movetime) {
 	Moment startTime = Clock::now();
 
 	if (depth <= 0)
-		depth = 15;
+		depth = MAX_DEPTH;
 
 	float timeAllowedSecs;
 
@@ -53,21 +66,36 @@ Move Player::Go(int depth, int wtime, int btime, int winc, int binc, int movesto
 }
 
 int16_t Player::Evaluate() {
-	int16_t eval = 0;
+	int eval = 0;
 
-	Bitboard piecePositions;
+	int mg_eval = 0;
+	int eg_eval = 0;
 
-	#define X(piece) 																			\
-																								\
-	piecePositions = m_board.GetPieceBitboard(Piece::piece);									\
-	for (Square piecePosition : piecePositions) { 												\
-		eval += PIECE_VALUES[Piece::piece];														\
-		eval -= midgamePieceSquareTables[Piece::piece][static_cast<size_t>(piecePosition)];		\
+	#define X(piece) 																									\
+	for (Square piecePosition : m_board.GetPieceBitboard(Piece::piece)) { 												\
+		mg_eval += m_midgamePieceSquareTables[static_cast<size_t>(Piece::piece)][static_cast<size_t>(piecePosition)];	\
+		eg_eval += m_endgamePieceSquareTables[static_cast<size_t>(Piece::piece)][static_cast<size_t>(piecePosition)];	\
 	}
 	PIECES_LIST
 	#undef X
 
-	return m_board.IsWhiteTurn() ? eval : -eval;
+	int phase = m_board.GetPhase();
+
+	//std::cerr << "Phase: " << phase << '\n';
+
+	//std::cerr << "Overall eval (mg/eg): " << mg_eval << "/" << eg_eval << '\n'; 
+
+	eval += mg_eval * phase;
+	eval += eg_eval * (START_PHASE - phase);
+
+	eval /= START_PHASE;
+
+	//std::cerr << "Absolute eval after phase: " << eval << '\n';
+
+	if (!m_board.IsWhiteTurn())
+		eval *= -1;
+
+	return static_cast<int16_t>(eval);
 }
 
 Move Player::IterativeDeepening(int8_t maxDepth) {
@@ -75,9 +103,9 @@ Move Player::IterativeDeepening(int8_t maxDepth) {
 	m_isStopped = false;
 
 	// Initialise PV move to garbage move that will never clash with anything
-	Move movePv{ QUIET_MOVE_BASE_SCORE, Square::a1, Square::a1 };
-	int16_t bestScore = -MAX_SCORE;
+	Move movePv{ QUIET_MOVE_BASE_SCORE, Square::NONE, Square::NONE };
 	int8_t depth = 1;
+	m_killers.Reset();
 
 	while (depth <= maxDepth) {
 	
@@ -92,9 +120,7 @@ Move Player::IterativeDeepening(int8_t maxDepth) {
 		if (m_isStopped)
 			break;
 
-		if (score > bestScore) {
-			movePv = bestMove;
-		}
+		movePv = bestMove;
 
 		++depth;
 
@@ -126,14 +152,15 @@ int16_t Player::RootNegamax(int8_t depth, const Move& movePv, Move& bestMove) {
 	}
 
 	std::array<int, MoveList::MAX_POSSIBLE_MOVES> staticScores;
-
 	for (int i = 0; i < moves.size(); ++i) {
-		if (moves[i] == movePv) {
+		if (moves[i] == movePv)
 			staticScores[i] = PV_MOVE_BASE_SCORE;
-		} else {
+		else if (!moves[i].m_isCapture && moves[i] == m_killers.GetFirst(depth))
+			staticScores[i] = FIRST_KILLER_BASE_SCORE;
+		else if (!moves[i].m_isCapture && moves[i] == m_killers.GetSecond(depth))
+			staticScores[i] = SECOND_KILLER_BASE_SCORE;
+		else
 			staticScores[i] = moves[i].m_score;
-		}
-
 	}
 
 	int16_t bestScore = -MAX_SCORE;
@@ -183,6 +210,9 @@ int16_t Player::Negamax(int8_t depth, int16_t alpha, int16_t beta) {
 	++m_currentDepthNodes;
 #endif
 
+	if (m_isStopped)
+		return 0;
+
 	if (((m_nodesSearched % 2048) == 0) && (Clock::now() >= m_deadline)) {
 		m_isStopped = true;
 		return 0;
@@ -220,24 +250,29 @@ int16_t Player::Negamax(int8_t depth, int16_t alpha, int16_t beta) {
 	bool check = m_moveGenerator.GenerateMoves(moves);
 
 	if (moves.size() == 0) {
-		return check ? -MATE_SCORE : 0;
+		if (!check)
+			return 0;
+		
+		return -MATE_SCORE + depth;
 	}
 
 	if (depth == 0)
 		return Quiescence(alpha, beta);
 
 	std::array<int, MoveList::MAX_POSSIBLE_MOVES> staticScores;
-
 	for (int i = 0; i < moves.size(); ++i) {
-		if (isTransposition && (moves[i] == pEntry->m_move)) {
+		if (isTransposition && (moves[i] == pEntry->m_move))
 			staticScores[i] = TT_MOVE_BASE_SCORE;
-		} else {
+		else if (!moves[i].m_isCapture && moves[i] == m_killers.GetFirst(depth))
+			staticScores[i] = FIRST_KILLER_BASE_SCORE;
+		else if (!moves[i].m_isCapture && moves[i] == m_killers.GetSecond(depth))
+			staticScores[i] = SECOND_KILLER_BASE_SCORE;
+		else
 			staticScores[i] = moves[i].m_score;
-		}
 	}
 
 	int16_t bestScore = -MAX_SCORE;
-	Move bestMove;
+	Move bestMove{ QUIET_MOVE_BASE_SCORE, Square::NONE, Square::NONE };
 	EvaluationType evaluationType = EvaluationType::UPPER_BOUND;
 
 	for (int i = 0; i < moves.size(); ++i) {
@@ -267,8 +302,13 @@ int16_t Player::Negamax(int8_t depth, int16_t alpha, int16_t beta) {
 
 		}
 
-		if (score >= beta) {
+		if (bestScore >= beta) {
 			evaluationType = EvaluationType::LOWER_BOUND;
+
+			if (!move.m_isCapture) {
+				m_killers.Set(depth, move);
+			}
+
 			break;
 		}
 	}
@@ -293,6 +333,14 @@ int16_t Player::Quiescence(int16_t alpha, int16_t beta) {
 	++m_currentDepthNodes;
 #endif
 
+	if (m_isStopped)
+		return 0;
+
+	if (((m_nodesSearched % 2048) == 0) && (Clock::now() >= m_deadline)) {
+		m_isStopped = true;
+		return 0;
+	}
+
 	int8_t depth = 0;
 
 	Hash hash = m_board.GetHash();
@@ -300,7 +348,7 @@ int16_t Player::Quiescence(int16_t alpha, int16_t beta) {
 
 	bool isTransposition = pEntry != nullptr;
 
-	if (isTransposition) {
+	if (isTransposition && pEntry->m_depth == 0) {
 		switch (pEntry->m_evaluationType) {
 			case EvaluationType::EXACT: {
 #if DEBUG
@@ -325,8 +373,19 @@ int16_t Player::Quiescence(int16_t alpha, int16_t beta) {
 
 	int16_t eval = Evaluate();
 
-	if (eval >= beta)
-		return beta;
+	if (eval >= beta) {
+		TranspositionTableEntry entry {
+			Move{ QUIET_MOVE_BASE_SCORE, Square::NONE, Square::NONE },
+			hash,
+			eval,
+			depth,
+			EvaluationType::LOWER_BOUND
+		};
+
+		m_transpositionTable.SetEntry(hash, entry);
+
+		return eval;
+	}
 
 	if (eval > alpha)
 		alpha = eval;
@@ -344,8 +403,8 @@ int16_t Player::Quiescence(int16_t alpha, int16_t beta) {
 		}
 	}
 
-	int16_t bestScore = -MAX_SCORE;
-	Move bestMove;
+	int16_t bestScore = eval;
+	Move bestMove{ QUIET_MOVE_BASE_SCORE, Square::NONE, Square::NONE };
 	EvaluationType evaluationType = EvaluationType::UPPER_BOUND;
 
 	for (int i = 0; i < captures.size(); ++i) {
@@ -360,19 +419,31 @@ int16_t Player::Quiescence(int16_t alpha, int16_t beta) {
 
 		const Move& capture = captures[i];
 
+		int attackerValue = ABSOLUTE_PIECE_VALUES[m_board.GetPieceAtSquare(capture.m_from)];
+		int victimValue = ABSOLUTE_PIECE_VALUES[m_board.GetPieceAtSquare(capture.m_to)];
+
+		if ((capture.m_promotionPiece != Piece::EMPTY) && (attackerValue < victimValue))
+			continue;
+
 		int victimScore = ABSOLUTE_PIECE_VALUES[m_board.GetPieceAtSquare(capture.m_to)];
-		if ((eval + victimScore + DELTA_PRUNE_MARGIN) < alpha)
+		if ((capture.m_promotionPiece != Piece::EMPTY) && ((eval + victimScore + DELTA_PRUNE_MARGIN) < alpha))
 			continue;
 
 		Undo undo = m_board.MakeMove(capture);
 		int16_t score = -Quiescence(-beta, -alpha);
 		m_board.UndoMove(capture, undo);
 
-		if (score >= beta)
-			return beta;
+		if (score > bestScore) {
+			bestScore = score;
+			bestMove = capture;
+		}
+
+		if (score >= beta) {
+			evaluationType = EvaluationType::UPPER_BOUND;
+			break;
+		}
 		
 		if (score > alpha) {
-			bestMove = capture;
 			alpha = score;
 		}
 	}
@@ -387,7 +458,7 @@ int16_t Player::Quiescence(int16_t alpha, int16_t beta) {
 
 	m_transpositionTable.SetEntry(hash, entry);
 
-	return alpha;
+	return bestScore;
 }
 
 int Player::RootPerft(int8_t depth) {

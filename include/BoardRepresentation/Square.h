@@ -29,6 +29,10 @@ inline std::string SquareToString(Square sq) {
 		SQUARE_LIST
 		#undef X
 
+		case (Square::NONE) : {
+			return "NONE";
+		}
+
 		default:
 			return "INVALID_SQUARE";
 	}

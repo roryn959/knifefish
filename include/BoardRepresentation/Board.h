@@ -10,6 +10,8 @@
 #include "Engine/Move.h"
 #include "Engine/Undo.h"
 
+#define START_PHASE 24
+constexpr std::array<int, static_cast<size_t>(Piece::NUM_PIECES)> PIECE_PHASE_VALUES { 0, 1, 1, 2, 4, 0, 0, 1, 1, 2, 4, 0 };
 
 // Macro to do a safe call during move stuff.
 #if DEBUG
@@ -50,7 +52,12 @@ public:
 	Bitboard GetWhitePieceBitboard() const;
 	Bitboard GetBlackPieceBitboard() const;
 
-	Piece GetPieceAtSquare(Square square) { return m_boardPieces[static_cast<size_t>(square)]; }
+	Piece GetPieceAtSquare(Square square) const noexcept { return m_boardPieces[static_cast<size_t>(square)]; }
+
+	inline void RegressPhase(Piece piece) noexcept { m_phase += PIECE_PHASE_VALUES[static_cast<size_t>(piece)]; }
+	inline void ProgressPhase(Piece piece) noexcept { m_phase -= PIECE_PHASE_VALUES[static_cast<size_t>(piece)]; }
+
+	inline int GetPhase() const noexcept { return (m_phase > START_PHASE) ? START_PHASE : m_phase; }
 
 	Hash GetHash() const noexcept { return m_zobrist.GetHash(); }
 	void RebuildHash();
@@ -102,6 +109,8 @@ private:
 	std::array<bool, static_cast<size_t>(CastlePermission::COUNT)> m_castlePermissions;
 	Square m_enPassantSquare;
 	bool m_isWhiteTurn;
+
+	int m_phase;
 
 	Zobrist m_zobrist;
 };
