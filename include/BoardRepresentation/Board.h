@@ -10,6 +10,8 @@
 #include "Engine/Move.h"
 #include "Engine/Undo.h"
 
+#define MAX_REVERSIBLE_MOVES 100
+
 #define START_PHASE 24
 constexpr std::array<int, static_cast<size_t>(Piece::NUM_PIECES)> PIECE_PHASE_VALUES { 0, 1, 1, 2, 4, 0, 0, 1, 1, 2, 4, 0 };
 
@@ -41,9 +43,12 @@ struct Location {
 
 class Board {
 public:
-	Board() = default;
+	Board();
 
 	void SetUpStartPosition();
+
+	Undo MakeMove(const Move& move);
+	void UndoMove(const Move& move, const Undo& undo);
 
 	inline Bitboard GetPieceBitboard(Piece p) const noexcept { return m_pieceBitboards[p]; }
 	inline const Bitboard* const GetPieceBitboards() const noexcept { return m_pieceBitboards.data(); }
@@ -53,14 +58,6 @@ public:
 	Bitboard GetBlackPieceBitboard() const;
 
 	Piece GetPieceAtSquare(Square square) const noexcept { return m_boardPieces[static_cast<size_t>(square)]; }
-
-	inline void RegressPhase(Piece piece) noexcept { m_phase += PIECE_PHASE_VALUES[static_cast<size_t>(piece)]; }
-	inline void ProgressPhase(Piece piece) noexcept { m_phase -= PIECE_PHASE_VALUES[static_cast<size_t>(piece)]; }
-
-	inline int GetPhase() const noexcept { return (m_phase > START_PHASE) ? START_PHASE : m_phase; }
-
-	Hash GetHash() const noexcept { return m_zobrist.GetHash(); }
-	void RebuildHash();
 
 	inline bool GetCastlePermission(CastlePermission castlePermission) const noexcept { return m_castlePermissions[static_cast<size_t>(castlePermission)]; }
 	void SetCastlePermission(CastlePermission castlePermission, bool permitted) noexcept;
@@ -73,8 +70,12 @@ public:
 	inline bool IsWhiteTurn() const noexcept { return m_isWhiteTurn; }
 	inline void SwitchTurn() noexcept { m_isWhiteTurn = !m_isWhiteTurn; m_zobrist.ApplyWhiteTurnHash(); }
 
-	Undo MakeMove(const Move& move);
-	void UndoMove(const Move& move, const Undo& undo);
+	bool CheckQuietDraws() const noexcept;
+
+	inline int GetPhase() const noexcept { return (m_phase > START_PHASE) ? START_PHASE : m_phase; }
+
+	inline Hash GetHash() const noexcept { return m_zobrist.GetHash(); }
+	void RebuildHash();
 
 	friend std::ostream& operator<<(std::ostream& os, const Board& board);
 
@@ -84,7 +85,7 @@ private:
 	void DoDoublePawnPush(const Location& to);
 	void MakeCastleMove(const Location& to);
 	void MakePromotionMove(const Location& from, const Location& to, Piece promotionPiece);
-	void MakeQuietMove(const Location& from, const Location& to);
+	void MakeQuietMove(const Location& from, const Location& to, bool& isReversible);
 
 	void UndoCapture(const Location& to, Piece capturedPiece);
 	void UndoEnPassantCapture(const Location& to);
@@ -98,6 +99,12 @@ private:
 	bool PutDown(Piece piece, const Location& loc);
 	inline bool PutDown(Piece piece, Bitboard bb) { return PutDown(piece, Location{ static_cast<Square>(bb), bb }); }
 
+	inline void ResetRepetitionStack() noexcept { m_repetitionStackTail = m_repetitionStackHead; }
+	inline void PushToRepetitionStack(Hash hash) noexcept { m_repetitionStack.at(m_repetitionStackHead++) = hash; }
+
+	inline void RegressPhase(Piece piece) noexcept { m_phase += PIECE_PHASE_VALUES[static_cast<size_t>(piece)]; }
+	inline void ProgressPhase(Piece piece) noexcept { m_phase -= PIECE_PHASE_VALUES[static_cast<size_t>(piece)]; }
+
 #if DEBUG
 	bool CheckBoardOccupancy() const;
 	void CheckKingCount(const Move& move) const;
@@ -109,6 +116,10 @@ private:
 	std::array<bool, static_cast<size_t>(CastlePermission::COUNT)> m_castlePermissions;
 	Square m_enPassantSquare;
 	bool m_isWhiteTurn;
+
+	std::array<Hash, 2048>	m_repetitionStack;
+	size_t					m_repetitionStackHead;
+	size_t 					m_repetitionStackTail;
 
 	int m_phase;
 

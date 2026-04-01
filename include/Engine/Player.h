@@ -29,6 +29,8 @@ constexpr int SecsToMillisecs(double secs) { return round(secs * 1000.0); }
 #define MAX_DEPTH 20
 #define DELTA_PRUNE_MARGIN 200
 
+constexpr int16_t NO_SCORE { 0 };
+constexpr int16_t DRAW_SCORE { 0 };
 constexpr int16_t MATE_SCORE { 30'000 };
 constexpr int16_t MAX_SCORE { 32'000 };
 
@@ -51,7 +53,7 @@ constexpr std::array<int, static_cast<size_t>(Square::COUNT)> BLACK_PAWN_MG_PST 
      98, 134,  61,  95,  68, 126, 34, -11,
      -6,   7,  26,  31,  65,  56, 25, -20,
     -14,  13,   6,  21,  23,  12, 17, -23,
-    -27,  -2,  -5,  12,  17,   6, 10, -25,
+    -27,  -2,  -5,  12,  17,   6, 0,  -25,
     -26,  -4,  -4, -10,   3,   3, 33, -12,
     -35,  -1, -20, -23, -15,  24, 38, -22,
       0,   0,   0,   0,   0,   0,  0,   0,

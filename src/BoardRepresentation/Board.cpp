@@ -2,16 +2,22 @@
 
 #include <cassert>
 
+Board::Board() :
+	m_pieceBitboards{},
+	m_boardPieces{},
+	m_castlePermissions{},
+	m_enPassantSquare{},
+	m_isWhiteTurn{},
+	m_repetitionStack{},
+	m_repetitionStackHead{},
+	m_repetitionStackTail{},
+	m_phase{},
+	m_zobrist{}
+{
+	SetUpStartPosition();
+}
 
 void Board::SetUpStartPosition() {
-	// There is some logic for incrementally hashing inside the Set methods.
-	// However since we are starting from scratch, we don't really want to use them
-	// because we may get weird bugs from hashes not being applied properly if a
-	// property doesn't change by resetting the position even though it should since the hash is reset.
-	// So, we want to just reset the board manually and apply the hashes manually here (and probably when I do FEN).
-
-	m_zobrist.ResetHash();
-
 	m_isWhiteTurn = true;
 
 	#define X(permission) m_castlePermissions[static_cast<size_t>(CastlePermission::permission)] = true;
@@ -30,24 +36,11 @@ void Board::SetUpStartPosition() {
 	PIECES_LIST
 	#undef X
 
-	// Update hash
-
-	#define X(piece) 										\
-	for (Square sq : m_pieceBitboards[Piece::piece]) { 		\
-		m_zobrist.ApplyPieceHash(Piece::piece, sq); 		\
-	}
-	PIECES_LIST
-	#undef X
-
-	#define X(permission) m_zobrist.ApplyCastleHash(CastlePermission::permission);
-	CASTLE_PERMISSIONS_LIST
-	#undef X
+	m_repetitionStackTail = m_repetitionStackHead = 0;
 
 	m_phase = START_PHASE;
 
-	m_zobrist.ApplyEnPassantHash(m_enPassantSquare);
-
-	m_zobrist.ApplyWhiteTurnHash();
+	RebuildHash();
 }
 
 #if DEBUG
@@ -65,7 +58,7 @@ bool Board::CheckBoardOccupancy() const {
 	return true;
 }
 
-inline void Board::CheckKingCount(const Move& move) const {
+void Board::CheckKingCount(const Move& move) const {
 	int whiteKingCount = m_pieceBitboards[Piece::WHITE_KING].PopCount();
 
 	if (whiteKingCount != 1) {
@@ -84,6 +77,39 @@ inline void Board::CheckKingCount(const Move& move) const {
 	}
 }
 #endif
+
+bool Board::CheckQuietDraws() const noexcept {
+	size_t numReversibleMoves = m_repetitionStackHead - m_repetitionStackTail;
+
+#if DEBUG
+	if (numReversibleMoves > MAX_REVERSIBLE_MOVES) {
+		std::cerr << "Error: More than " << MAX_REVERSIBLE_MOVES << " reversible moves made!\n";
+		std::exit(1);
+	}
+#endif
+
+	if (numReversibleMoves == MAX_REVERSIBLE_MOVES)
+		return true;
+
+	Hash currentHash = GetHash();
+
+	if (m_repetitionStackHead < 2)
+		return false;
+
+	int count = 0;
+	for (size_t i = (m_repetitionStackHead - 2); i >= m_repetitionStackTail; i -= 2) {
+		if (m_repetitionStack.at(i) == currentHash) {
+			if (++count == 2) {
+				return true;
+			}
+		}
+		
+		if (i < 2)
+			return false;
+	}
+
+	return false;
+}
 
 Bitboard Board::GetAllPieceBitboard() const {
 	Bitboard allPieces{0ULL};
@@ -191,8 +217,11 @@ Undo Board::MakeMove(const Move& move) {
 		Piece::EMPTY,
 		m_enPassantSquare,
 		false,
-		m_castlePermissions
+		m_castlePermissions,
+		m_repetitionStackTail
 	};
+
+	Hash hash = GetHash();
 
 	SetEnPassantSquare(Square::NONE);
 
@@ -200,6 +229,8 @@ Undo Board::MakeMove(const Move& move) {
 	Location to { move.m_to, Bitboard{move.m_to} };
 
 	Piece promotionPiece = move.m_promotionPiece;
+
+	bool isReversible = false;
 
 	if (move.m_isCapture) {
 		DoCapture(from, to, undo);
@@ -214,10 +245,15 @@ Undo Board::MakeMove(const Move& move) {
 	} else if (move.m_promotionPiece != Piece::EMPTY) {
 		MakePromotionMove(from, to, promotionPiece);
 	} else {
-		MakeQuietMove(from, to);
+		MakeQuietMove(from, to, isReversible);
 	}
 
 	SwitchTurn();
+
+	if (!isReversible)
+		ResetRepetitionStack();
+	
+	PushToRepetitionStack(hash);
 
 #if DEBUG
 	CheckKingCount(move);
@@ -324,7 +360,9 @@ void Board::MakePromotionMove(const Location& from, const Location& to, Piece pr
 	RegressPhase(promotionPiece);
 }
 
-void Board::MakeQuietMove(const Location& from, const Location& to) {
+void Board::MakeQuietMove(const Location& from, const Location& to, bool& isReversible) {
+	isReversible = true;
+
 	Piece piece = GetPieceAtSquare(from.m_square);
 	SAFE_CALL(PickUp(piece, from));
 	SAFE_CALL(PutDown(piece, to));
@@ -333,18 +371,25 @@ void Board::MakeQuietMove(const Location& from, const Location& to) {
 	if (IsWhiteTurn()) {
 		if (GetCastlePermission(CastlePermission::WHITE_KINGSIDE) && (from.m_bitboard == E1_MASK || from.m_bitboard == H1_MASK)) {
 			SetCastlePermission(CastlePermission::WHITE_KINGSIDE, false);
+			isReversible = false;
 		}
 		if (GetCastlePermission(CastlePermission::WHITE_QUEENSIDE) && (from.m_bitboard == E1_MASK || from.m_bitboard == A1_MASK)) {
 			SetCastlePermission(CastlePermission::WHITE_QUEENSIDE, false);
+			isReversible = false;
 		}
 	} else {
 		if (GetCastlePermission(CastlePermission::BLACK_KINGSIDE) && (from.m_bitboard == E8_MASK || from.m_bitboard == H8_MASK)) {
 			SetCastlePermission(CastlePermission::BLACK_KINGSIDE, false);
+			isReversible = false;
 		}
 		if (GetCastlePermission(CastlePermission::BLACK_QUEENSIDE) && (from.m_bitboard == E8_MASK || from.m_bitboard == A8_MASK)) {
 			SetCastlePermission(CastlePermission::BLACK_QUEENSIDE, false);
+			isReversible = false;
 		}
 	}
+
+	if (piece == Piece::WHITE_PAWN || piece == Piece::BLACK_PAWN)
+		isReversible = false;
 }
 
 void Board::UndoMove(const Move& move, const Undo& undo) {
@@ -372,6 +417,9 @@ void Board::UndoMove(const Move& move, const Undo& undo) {
 
 	SetEnPassantSquare(undo.m_enPassantSquare);
 	SetCastlePermissions(undo.m_castlePermissions);
+
+	--m_repetitionStackHead;
+	m_repetitionStackTail = undo.m_repetitionStackTail;
 
 #if DEBUG
 	CheckKingCount(move);
@@ -473,6 +521,8 @@ std::ostream& operator<<(std::ostream& os, const Board& board) {
 		else
 			os << 'O';
 	}
+
+	os << '\n';
 
 	os << '\n';
 

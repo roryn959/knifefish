@@ -47,6 +47,10 @@ Move Player::Go(int depth, int wtime, int btime, int winc, int binc, int movesto
 		timeAllowedSecs = 600;
 	}
 
+	// Hack to avoid losing on time due to lag: shave off 200 ms from the allotted time.
+	if (timeAllowedSecs > 0.2)
+		timeAllowedSecs -= 0.2;
+
 	std::cerr << "Choosing to spend " << timeAllowedSecs << "s on this move.\n";
 
 	m_deadline = startTime + ms(SecsToMillisecs(timeAllowedSecs));
@@ -81,16 +85,10 @@ int16_t Player::Evaluate() {
 
 	int phase = m_board.GetPhase();
 
-	//std::cerr << "Phase: " << phase << '\n';
-
-	//std::cerr << "Overall eval (mg/eg): " << mg_eval << "/" << eg_eval << '\n'; 
-
 	eval += mg_eval * phase;
 	eval += eg_eval * (START_PHASE - phase);
 
 	eval /= START_PHASE;
-
-	//std::cerr << "Absolute eval after phase: " << eval << '\n';
 
 	if (!m_board.IsWhiteTurn())
 		eval *= -1;
@@ -144,11 +142,14 @@ int16_t Player::RootNegamax(int8_t depth, const Move& movePv, Move& bestMove) {
 
 	++m_nodesSearched;
 
+	if (m_board.CheckQuietDraws())
+		return DRAW_SCORE;
+
 	MoveList moves;
 	bool check = m_moveGenerator.GenerateMoves(moves);
 
 	if (moves.size() == 0) {
-		return check ? -MATE_SCORE : 0;
+		return check ? -MATE_SCORE : DRAW_SCORE;
 	}
 
 	std::array<int, MoveList::MAX_POSSIBLE_MOVES> staticScores;
@@ -185,7 +186,7 @@ int16_t Player::RootNegamax(int8_t depth, const Move& movePv, Move& bestMove) {
 		m_board.UndoMove(move, undo);
 
 		if (m_isStopped)
-			return 0;
+			return NO_SCORE;
 
 		if (score > bestScore) {
 			bestScore = score;
@@ -211,12 +212,15 @@ int16_t Player::Negamax(int8_t depth, int16_t alpha, int16_t beta) {
 #endif
 
 	if (m_isStopped)
-		return 0;
+		return NO_SCORE;
 
 	if (((m_nodesSearched % 2048) == 0) && (Clock::now() >= m_deadline)) {
 		m_isStopped = true;
-		return 0;
+		return NO_SCORE;
 	}
+
+	if (m_board.CheckQuietDraws())
+		return DRAW_SCORE;
 
 	Hash hash = m_board.GetHash();
 	const TranspositionTableEntry* pEntry = m_transpositionTable.GetEntry(hash);
@@ -249,12 +253,8 @@ int16_t Player::Negamax(int8_t depth, int16_t alpha, int16_t beta) {
 	MoveList moves;
 	bool check = m_moveGenerator.GenerateMoves(moves);
 
-	if (moves.size() == 0) {
-		if (!check)
-			return 0;
-		
-		return -MATE_SCORE + depth;
-	}
+	if (moves.size() == 0)
+		return check ? -MATE_SCORE : DRAW_SCORE;
 
 	if (depth == 0)
 		return Quiescence(alpha, beta);
