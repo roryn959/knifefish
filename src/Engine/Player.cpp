@@ -51,7 +51,7 @@ Move Player::Go(int depth, int wtime, int btime, int winc, int binc, int movesto
 	if (timeAllowedSecs > 0.1)
 		timeAllowedSecs -= 0.1;
 
-	std::cerr << "Choosing to spend " << timeAllowedSecs << "s on this move.\n";
+	std::cerr << "Spending " << timeAllowedSecs << "s on this move.\n\n";
 
 	m_deadline = startTime + ms(SecsToMillisecs(timeAllowedSecs));
 	Move bestMove = IterativeDeepening(depth);
@@ -65,7 +65,6 @@ Move Player::Go(int depth, int wtime, int btime, int winc, int binc, int movesto
 	std::cerr << "Log: Search time (s): " << searchTimeS << "\n\n";
 #endif
 
-	std::cerr << "Returning move " << bestMove << '\n';
 	return bestMove;
 }
 
@@ -108,6 +107,26 @@ int16_t Player::Evaluate() {
 	return static_cast<int16_t>(eval);
 }
 
+bool Player::CheckForPotentialRepetition(int8_t depth) {
+	if (depth == 0)
+		return m_board.CheckQuietDraws();
+
+	MoveList moves;
+	MoveGenerationParameters params { moves, false };
+	(void) m_moveGenerator.GenerateMoves(params);
+
+	for (const Move& move : moves) {
+		Undo undo = m_board.MakeMove(move);
+		bool draw = CheckForPotentialRepetition(depth - 1);
+		m_board.UndoMove(move, undo);
+
+		if (draw)
+			return true;
+	}
+
+	return false;
+}
+
 Move Player::IterativeDeepening(int8_t maxDepth) {
 	m_nodesSearched = 0;
 	m_isStopped = false;
@@ -117,6 +136,10 @@ Move Player::IterativeDeepening(int8_t maxDepth) {
 	int16_t scorePv;
 	int8_t depth = 1;
 	m_killers.Reset();
+
+	// Hack: Check if there is a chance we will threefold repeat. If so, clear TT table to make sure we don't use old value and repeat when winning.
+	if (CheckForPotentialRepetition())
+		m_transpositionTable.Clear();
 
 	while (depth <= maxDepth) {
 	

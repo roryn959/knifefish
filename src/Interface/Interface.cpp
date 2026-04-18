@@ -212,7 +212,9 @@ bool Interface::Go(std::istringstream& tokenStream) {
 	}
 
 	Move bestMove = m_player.Go(depth, wtime, btime, winc, binc, movestogo, movetime);
+
 	std::cout << "bestmove " << bestMove.ToString() << '\n' << std::flush;
+	std::cerr << '\n';
 
 	return true;
 }
