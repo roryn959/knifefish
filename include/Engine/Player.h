@@ -29,6 +29,8 @@ constexpr int SecsToMillisecs(double secs) { return round(secs * 1000.0); }
 
 #define MAX_DEPTH 20
 #define DELTA_PRUNE_MARGIN 200
+#define NULL_MOVE_PRUNING_REDUCTION 4
+#define NULL_MOVE_PHASE_LIMIT 2
 
 constexpr int16_t NO_SCORE { 0 };
 constexpr int16_t DRAW_SCORE { 0 };

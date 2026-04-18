@@ -166,7 +166,8 @@ int16_t Player::RootNegamax(int8_t depth, const Move& movePv, Move& bestMove) {
 		return DRAW_SCORE;
 
 	MoveList moves;
-	bool check = m_moveGenerator.GenerateMoves(moves);
+	MoveGenerationParameters params { moves, false };
+	bool check = m_moveGenerator.GenerateMoves(params);
 
 	if (moves.size() == 0) {
 		return check ? -MATE_SCORE : DRAW_SCORE;
@@ -270,8 +271,22 @@ int16_t Player::Negamax(int8_t depth, int16_t alpha, int16_t beta) {
 		}
 	}
 
+	MoveGenerationContext context = m_moveGenerator.GetMoveGenerationContext();
+
+	if (m_board.GetPhase() > NULL_MOVE_PHASE_LIMIT && !m_moveGenerator.IsCheck(context) && (depth > (NULL_MOVE_PRUNING_REDUCTION + 1))) {
+		Undo undo = m_board.MakeNullMove();
+		int16_t score = -Negamax(depth - NULL_MOVE_PRUNING_REDUCTION, -beta, -(beta - 1));
+		m_board.UndoNullMove(undo);
+
+
+		if (score >= beta) {
+			return score;
+		}
+	}
+
 	MoveList moves;
-	bool check = m_moveGenerator.GenerateMoves(moves);
+	MoveGenerationParameters params{ moves, false };
+	bool check = m_moveGenerator.GenerateMoves(params, context);
 
 	if (moves.size() == 0)
 		return check ? -MATE_SCORE : DRAW_SCORE;
@@ -411,7 +426,8 @@ int16_t Player::Quiescence(int16_t alpha, int16_t beta) {
 		alpha = eval;
 
 	MoveList captures;
-	m_moveGenerator.GenerateMoves(captures, true);
+	MoveGenerationParameters params{ captures, true };
+	m_moveGenerator.GenerateMoves(params);
 
 	std::array<int, MoveList::MAX_POSSIBLE_MOVES> staticScores;
 
@@ -490,7 +506,8 @@ int Player::RootPerft(int8_t depth) {
 		return 1;
 
 	MoveList moves;
-	m_moveGenerator.GenerateMoves(moves);
+	MoveGenerationParameters params{ moves, false };
+	m_moveGenerator.GenerateMoves(params);
 
 	if (moves.size() == 0)
 		return 0;
@@ -525,7 +542,8 @@ int Player::Perft(int8_t depth) {
 		return 1;
 
 	MoveList moves;
-	m_moveGenerator.GenerateMoves(moves);
+	MoveGenerationParameters params{ moves, false };
+	m_moveGenerator.GenerateMoves(params);
 
 	if (moves.size() == 0)
 		return 0;

@@ -51,7 +51,8 @@ bool Interface::ProcessCommand(std::string input) {
 
 	if (input == "moves") {
 		MoveList moves;
-		m_moveGenerator.GenerateMoves(moves);
+		MoveGenerationParameters params { moves, false };
+		m_moveGenerator.GenerateMoves(params);
 		for (const Move& m : moves) {
 			std::cout << m;
 		}
@@ -60,7 +61,8 @@ bool Interface::ProcessCommand(std::string input) {
 
 	if (input == "captures") {
 		MoveList moves;
-		m_moveGenerator.GenerateMoves(moves, true);
+		MoveGenerationParameters params { moves, true };
+		m_moveGenerator.GenerateMoves(params);
 		for (const Move& m : moves) {
 			std::cout << m;
 		}
@@ -163,7 +165,8 @@ bool Interface::Position(std::istringstream& tokenStream) {
 
 	while (tokenStream >> token) {
 		MoveList moves;
-		m_moveGenerator.GenerateMoves(moves);
+		MoveGenerationParameters params { moves, false };
+		m_moveGenerator.GenerateMoves(params);
 
 		bool foundMove = false;
 		for (const Move& move : moves) {

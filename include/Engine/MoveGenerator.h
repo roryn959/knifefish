@@ -44,9 +44,6 @@ private:
 };
 
 struct MoveGenerationContext {
-	MoveList&													m_moves;
-	bool														m_capturesOnly;
-
 	Bitboard													m_friendlyPawnBB;
 	Bitboard 													m_friendlyKnightBB;
 	Bitboard 													m_friendlyBishopBB;
@@ -54,6 +51,7 @@ struct MoveGenerationContext {
 	Bitboard 													m_friendlyQueenBB;
 	Bitboard 													m_friendlyKingBB;
 	Square														m_friendlyKingSquare;
+	Bitboard													m_friendlyPieceBB;
 
 	Bitboard 													m_enemyPawnBB;
 	Bitboard 													m_enemyKnightBB;
@@ -69,34 +67,46 @@ struct MoveGenerationContext {
 	Bitboard 													m_enemyAttackSet;
 	Bitboard 													m_checkMaskBB;
 	std::array<Bitboard, static_cast<size_t>(Square::COUNT)> 	m_pinMasks;
+	Bitboard													m_checkerBB;
+};
+
+struct MoveGenerationParameters {
+	MoveList&													m_moves;
+	bool														m_capturesOnly;
 };
 
 class MoveGenerator {
 public:
 	MoveGenerator(Board& board);
 
-	bool GenerateMoves(MoveList& moves, bool capturesOnly = false) const;
+	MoveGenerationContext GetMoveGenerationContext() const;
+
+	bool GenerateMoves(const MoveGenerationParameters& params) const;
+	bool GenerateMoves(const MoveGenerationParameters& params, MoveGenerationContext& context) const;
 
 	Bitboard GetAttackSet(Bitboard pawnBB, Bitboard knightBB, Bitboard bishopBB, Bitboard rookBB, Bitboard queenBB, Bitboard kingBB, Bitboard emptySquareBB, Bitboard allPieceBB) const;
 
+	bool IsCheck() const;
+	bool IsCheck(const MoveGenerationContext& context) const;
+
 private:
-	void GeneratePawnMoves(const MoveGenerationContext& context) const;
-	void GenerateWhitePawnMoves(const MoveGenerationContext& context) const;
-	void GenerateBlackPawnMoves(const MoveGenerationContext& context) const;
+	void GeneratePawnMoves(const MoveGenerationParameters& params, const MoveGenerationContext& context) const;
+	void GenerateWhitePawnMoves(const MoveGenerationParameters& params, const MoveGenerationContext& context) const;
+	void GenerateBlackPawnMoves(const MoveGenerationParameters& params, const MoveGenerationContext& context) const;
 
-	void GenerateKnightMoves(const MoveGenerationContext& context) const;
+	void GenerateKnightMoves(const MoveGenerationParameters& params, const MoveGenerationContext& context) const;
 
-	void GenerateBishopMoves(const MoveGenerationContext& context) const;
+	void GenerateBishopMoves(const MoveGenerationParameters& params, const MoveGenerationContext& context) const;
 
-	void GenerateRookMoves(const MoveGenerationContext& context) const;
+	void GenerateRookMoves(const MoveGenerationParameters& params, const MoveGenerationContext& context) const;
 
-	void GenerateQueenMoves(const MoveGenerationContext& context) const;
+	void GenerateQueenMoves(const MoveGenerationParameters& params, const MoveGenerationContext& context) const;
 
-	void GenerateKingMoves(const MoveGenerationContext& context) const;
+	void GenerateKingMoves(const MoveGenerationParameters& params, const MoveGenerationContext& context) const;
 
-	void GenerateCastleMoves(const MoveGenerationContext& context) const;
-	void GenerateWhiteCastleMoves(const MoveGenerationContext& context) const;
-	void GenerateBlackCastleMoves(const MoveGenerationContext& context) const;
+	void GenerateCastleMoves(const MoveGenerationParameters& params, const MoveGenerationContext& context) const;
+	void GenerateWhiteCastleMoves(const MoveGenerationParameters& params, const MoveGenerationContext& context) const;
+	void GenerateBlackCastleMoves(const MoveGenerationParameters& params, const MoveGenerationContext& context) const;
 
 	Bitboard GetWhitePawnAttackSet(Bitboard pawns) const;
 	Bitboard GetBlackPawnAttackSet(Bitboard pawns) const;

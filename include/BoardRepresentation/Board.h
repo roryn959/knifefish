@@ -48,6 +48,9 @@ public:
 	Undo MakeMove(const Move& move);
 	void UndoMove(const Move& move, const Undo& undo);
 
+	Undo MakeNullMove();
+	void UndoNullMove(const Undo& undo);
+
 	inline Bitboard GetPieceBitboard(Piece p) const noexcept { return m_pieceBitboards[p]; }
 	inline const Bitboard* const GetPieceBitboards() const noexcept { return m_pieceBitboards.data(); }
 

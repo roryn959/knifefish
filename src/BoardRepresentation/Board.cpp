@@ -469,6 +469,29 @@ void Board::UndoNormalMove(const Location& from, const Location& to) {
 	SAFE_CALL(PutDown(piece, from));
 }
 
+Undo Board::MakeNullMove() {
+	Undo undo {
+		Piece::EMPTY,
+		m_enPassantSquare,
+		m_castlePermissions,
+		m_repetitionStackTail
+	};
+
+	SetEnPassantSquare(Square::NONE);
+
+	SwitchTurn();
+
+	return undo;
+}
+
+void Board::UndoNullMove(const Undo& undo) {
+	SwitchTurn();
+
+	SetEnPassantSquare(undo.m_enPassantSquare);
+	SetCastlePermissions(undo.m_castlePermissions);
+	m_repetitionStackTail = undo.m_repetitionStackTail;
+}
+
 std::ostream& operator<<(std::ostream& os, const Board& board) {
 	Piece boardArray[64];
 
