@@ -12,7 +12,7 @@ TranspositionTable::TranspositionTable() :
 
 void TranspositionTable::Clear() {
 	for (size_t i = 0; i < m_numEntries; ++i) {
-		m_table[i] = TranspositionTableEntry { 0ULL };
+		m_table[i] = TranspositionTableEntry{ Move{ 0ULL, Square::NONE, Square::NONE }, 0ULL, 0, -1 };
 	}
 }
 
