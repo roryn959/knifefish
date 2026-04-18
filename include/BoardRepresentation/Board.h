@@ -63,7 +63,7 @@ public:
 		if (permitted)
 			m_castlePermissions |= castlePermission;
 		else
-			m_castlePermissions &= !castlePermission;
+			m_castlePermissions &= ~castlePermission;
 	 }
 
 	inline void SetCastlePermissions(uint8_t castlePermissions) noexcept { m_castlePermissions = castlePermissions; }

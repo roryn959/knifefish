@@ -137,7 +137,7 @@ bool Interface::ProcessCommand(std::string input) {
 		return true;
 	}
 
-	std::cerr << "Log: input fell through...\n";
+	std::cerr << "Log: input " << input << " fell through...\n";
 	return true;
 }
 
