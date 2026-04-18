@@ -20,7 +20,7 @@ Board::Board() :
 void Board::SetUpStartPosition() {
 	m_isWhiteTurn = true;
 
-	#define X(permission) m_castlePermissions[static_cast<size_t>(CastlePermission::permission)] = true;
+	#define X(permission) SetCastlePermission(CastlePermission::permission, true);
 	CASTLE_PERMISSIONS_LIST
 	#undef X
 
@@ -151,10 +151,7 @@ void Board::RebuildHash() {
 	PIECES_LIST
 	#undef X
 
-	#define X(permission)											\
-	if (GetCastlePermission(CastlePermission::permission))			\
-		m_zobrist.ApplyCastleHash(CastlePermission::permission);
-
+	#define X(permission) if (GetCastlePermission(CastlePermission::permission)) m_zobrist.ApplyCastleHash(CastlePermission::permission);
 	CASTLE_PERMISSIONS_LIST
 	#undef X
 
@@ -162,19 +159,6 @@ void Board::RebuildHash() {
 
 	if (IsWhiteTurn())
 		m_zobrist.ApplyWhiteTurnHash();
-}
-
-void Board::SetCastlePermission(CastlePermission castlePermission, bool permitted) noexcept {
-	if (permitted == GetCastlePermission(castlePermission)) return;
-
-	m_castlePermissions[static_cast<size_t>(castlePermission)] = permitted;
-	m_zobrist.ApplyCastleHash(castlePermission);
-}
-
-void Board::SetCastlePermissions(std::array<bool, static_cast<size_t>(CastlePermission::COUNT)> castlePermissions) noexcept {
-	#define X(permission) SetCastlePermission(CastlePermission::permission, castlePermissions[static_cast<size_t>(CastlePermission::permission)]);
-	CASTLE_PERMISSIONS_LIST
-	#undef X
 }
 
 void Board::SetEnPassantSquare(Square square) noexcept {
@@ -216,7 +200,6 @@ Undo Board::MakeMove(const Move& move) {
 	Undo undo {
 		Piece::EMPTY,
 		m_enPassantSquare,
-		false,
 		m_castlePermissions,
 		m_repetitionStackTail
 	};
@@ -515,16 +498,11 @@ std::ostream& operator<<(std::ostream& os, const Board& board) {
 	if (enPassant != Square::NONE)
 		os << enPassant << '\n';
 
-	for (int i = 0; i < 4; i++) {
-		if (board.m_castlePermissions[i])
-			os << 'X';
-		else
-			os << 'O';
-	}
+	#define X(permission) os << (board.GetCastlePermission(CastlePermission::permission) ? 'X' : 'O');
+	CASTLE_PERMISSIONS_LIST
+	#undef X
 
-	os << '\n';
-
-	os << '\n';
+	os << "\n\n";
 
 	return os;
 }

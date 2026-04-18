@@ -47,9 +47,9 @@ Move Player::Go(int depth, int wtime, int btime, int winc, int binc, int movesto
 		timeAllowedSecs = 600;
 	}
 
-	// Hack to avoid losing on time due to lag: shave off 200 ms from the allotted time.
-	if (timeAllowedSecs > 0.2)
-		timeAllowedSecs -= 0.2;
+	// Hack to avoid losing on time due to lag: shave off 100 ms from the allotted time.
+	if (timeAllowedSecs > 0.1)
+		timeAllowedSecs -= 0.1;
 
 	std::cerr << "Choosing to spend " << timeAllowedSecs << "s on this move.\n";
 
@@ -83,6 +83,18 @@ int16_t Player::Evaluate() {
 	PIECES_LIST
 	#undef X
 
+	Square whiteKingSquare = static_cast<Square>(m_board.GetPieceBitboard(Piece::WHITE_KING));
+	Bitboard whiteKingDefenders = m_board.GetPieceBitboard(Piece::WHITE_PAWN) & WHITE_KING_DEFENDERS_MASK & WHITE_KING_DEFENCE_MASKS[static_cast<size_t>(whiteKingSquare)];
+
+	for (Square sq : whiteKingDefenders)
+		mg_eval += KING_DEFENCE_PAWN_PST[static_cast<size_t>(sq)];
+
+	Square blackKingSquare = static_cast<Square>(m_board.GetPieceBitboard(Piece::BLACK_KING));
+	Bitboard blackKingDefenders = m_board.GetPieceBitboard(Piece::BLACK_PAWN) & BLACK_KING_DEFENDERS_MASK & BLACK_KING_DEFENCE_MASKS[static_cast<size_t>(blackKingSquare)];
+
+	for (Square sq : blackKingDefenders)
+		mg_eval -= KING_DEFENCE_PAWN_PST[static_cast<size_t>(sq)];
+
 	int phase = m_board.GetPhase();
 
 	eval += mg_eval * phase;
@@ -102,6 +114,7 @@ Move Player::IterativeDeepening(int8_t maxDepth) {
 
 	// Initialise PV move to garbage move that will never clash with anything
 	Move movePv{ QUIET_MOVE_BASE_SCORE, Square::NONE, Square::NONE };
+	int16_t scorePv;
 	int8_t depth = 1;
 	m_killers.Reset();
 
@@ -113,7 +126,7 @@ Move Player::IterativeDeepening(int8_t maxDepth) {
 #endif
 
 		Move bestMove;
-		int16_t score = RootNegamax(depth, movePv, bestMove);
+		scorePv = RootNegamax(depth, movePv, bestMove);
 
 		if (m_isStopped)
 			break;
@@ -129,6 +142,13 @@ Move Player::IterativeDeepening(int8_t maxDepth) {
 		std::cerr << "Log: EBF: " << ebf << "\n\n"; 
 #endif
 	}
+
+#if DEBUG
+	std::cerr << "PV: " << movePv.ToString() << " ";
+	Undo undo = m_board.MakeMove(movePv);
+	PrintPv(depth - 2);
+	m_board.UndoMove(movePv, undo);
+#endif
 
 	return movePv;
 }
@@ -518,4 +538,25 @@ int Player::Perft(int8_t depth) {
 	}
 
 	return total;
+}
+
+void Player::PrintPv(int8_t depth) {
+	if (depth == 0) {
+		std::cerr << '\n';
+		return;
+	}
+
+	Hash hash = m_board.GetHash();
+	const TranspositionTableEntry* pEntry = m_transpositionTable.GetEntry(hash);
+
+	if (pEntry == nullptr || pEntry->m_depth < 1) {
+		std::cerr << "Log: PV ran out of moves...\n";
+		return;
+	}
+
+	std::cerr << pEntry->m_move.ToString() << " ";
+
+	Undo undo = m_board.MakeMove(pEntry->m_move);
+	PrintPv(depth - 1);
+	m_board.UndoMove(pEntry->m_move, undo);
 }

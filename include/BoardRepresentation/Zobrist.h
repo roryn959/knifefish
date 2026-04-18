@@ -28,8 +28,12 @@ public:
 
 private:
 	PieceHashValuesList 												m_pieceHashes;
-	std::array<Hash, static_cast<size_t>(CastlePermission::COUNT)> 		m_castleHashes;
+
+	// Castlehashes size is 8 so it's cleaner and easier to fid the hash for a permission
+	std::array<Hash, 8> 												m_castleHashes;
+
 	std::array<Hash, static_cast<size_t>(Square::COUNT)> 				m_enPassantHashes;
+
 	Hash																m_whiteTurnHash;
 
 	Hash m_hash;

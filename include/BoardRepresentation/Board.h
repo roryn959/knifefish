@@ -34,8 +34,6 @@ do {																				\
 #define SAFE_CALL(expr) (void) expr
 #endif
 
-typedef std::array<bool, static_cast<size_t>(CastlePermission::COUNT)> CastlePermissionsList;
-
 struct Location {
 	Square m_square;
 	Bitboard m_bitboard;
@@ -59,9 +57,16 @@ public:
 
 	Piece GetPieceAtSquare(Square square) const noexcept { return m_boardPieces[static_cast<size_t>(square)]; }
 
-	inline bool GetCastlePermission(CastlePermission castlePermission) const noexcept { return m_castlePermissions[static_cast<size_t>(castlePermission)]; }
-	void SetCastlePermission(CastlePermission castlePermission, bool permitted) noexcept;
-	void SetCastlePermissions(std::array<bool, static_cast<size_t>(CastlePermission::COUNT)> castlePermissions) noexcept;
+	inline bool GetCastlePermission(CastlePermission castlePermission) const noexcept { return m_castlePermissions & castlePermission;  }
+
+	inline void SetCastlePermission(CastlePermission castlePermission, bool permitted) noexcept { 
+		if (permitted)
+			m_castlePermissions |= castlePermission;
+		else
+			m_castlePermissions &= !castlePermission;
+	 }
+
+	inline void SetCastlePermissions(uint8_t castlePermissions) noexcept { m_castlePermissions = castlePermissions; }
 
 	inline Square GetEnPassantSquare() const noexcept { return m_enPassantSquare; }
 	void SetEnPassantSquare(Square square) noexcept;
@@ -113,7 +118,9 @@ private:
 	std::array<Bitboard, Piece::NUM_PIECES> m_pieceBitboards;
 	std::array<Piece, static_cast<size_t>(Square::COUNT)> m_boardPieces;
 
-	std::array<bool, static_cast<size_t>(CastlePermission::COUNT)> m_castlePermissions;
+	uint8_t m_castlePermissions;
+
+
 	Square m_enPassantSquare;
 	bool m_isWhiteTurn;
 

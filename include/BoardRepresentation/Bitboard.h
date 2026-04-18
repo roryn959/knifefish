@@ -22,6 +22,13 @@ constexpr uint64_t F2_MASK { A2_MASK >> 5 };
 constexpr uint64_t G2_MASK { A2_MASK >> 6 };
 constexpr uint64_t H2_MASK { A2_MASK >> 7 };
 
+constexpr uint64_t A3_MASK { A2_MASK << 8 };
+constexpr uint64_t B3_MASK { B2_MASK << 8 };
+constexpr uint64_t C3_MASK { C2_MASK << 8 };
+constexpr uint64_t F3_MASK { F2_MASK << 8 };
+constexpr uint64_t G3_MASK { G2_MASK << 8 };
+constexpr uint64_t H3_MASK { H2_MASK << 8 };
+
 constexpr uint64_t A8_MASK { 0x8000000000000000ULL };
 constexpr uint64_t B8_MASK { A8_MASK >> 1 };
 constexpr uint64_t C8_MASK { A8_MASK >> 2 };
@@ -38,6 +45,13 @@ constexpr uint64_t E7_MASK { A7_MASK >> 4 };
 constexpr uint64_t F7_MASK { A7_MASK >> 5 };
 constexpr uint64_t G7_MASK { A7_MASK >> 6 };
 constexpr uint64_t H7_MASK { A7_MASK >> 7 };
+
+constexpr uint64_t A6_MASK { A7_MASK >> 8 };
+constexpr uint64_t B6_MASK { B7_MASK >> 8 };
+constexpr uint64_t C6_MASK { C7_MASK >> 8 };
+constexpr uint64_t F6_MASK { F7_MASK >> 8 };
+constexpr uint64_t G6_MASK { G7_MASK >> 8 };
+constexpr uint64_t H6_MASK { H7_MASK >> 8 };
 
 constexpr uint64_t RANK_2_MASK				{ 0x000000000000FF00ULL };
 constexpr uint64_t RANK_7_MASK				{ 0x00FF000000000000ULL };
@@ -56,6 +70,9 @@ constexpr uint64_t WHITE_KINGSIDE_CASTLE_CHECKS_MASK	{ E1_MASK | F1_MASK | G1_MA
 constexpr uint64_t WHITE_QUEENSIDE_CASTLE_CHECKS_MASK	{ C1_MASK | D1_MASK | E1_MASK };
 constexpr uint64_t BLACK_KINGSIDE_CASTLE_CHECKS_MASK	{ E8_MASK | F8_MASK | G8_MASK };
 constexpr uint64_t BLACK_QUEENSIDE_CASTLE_CHECKS_MASK	{ C8_MASK | D8_MASK | E8_MASK };
+
+constexpr uint64_t WHITE_KING_DEFENDERS_MASK { F2_MASK | G2_MASK | H2_MASK | F3_MASK | G3_MASK | H3_MASK | A2_MASK | B2_MASK | C2_MASK | A3_MASK | B3_MASK | C3_MASK };
+constexpr uint64_t BLACK_KING_DEFENDERS_MASK { F6_MASK | G6_MASK | H6_MASK | F7_MASK | G7_MASK | H7_MASK | A6_MASK | B6_MASK | C6_MASK | A7_MASK | B7_MASK | C7_MASK };
 
 
 class Bitboard {
@@ -130,7 +147,7 @@ public:
 	constexpr bool		Any() const noexcept { return m_board != 0; }
 	constexpr bool		Empty() const noexcept { return m_board == 0; }
 
-	// Note: We should not need rank masks here because shifting should throw away invalid vertical moves anyway.
+	// Note: We don't need rank masks here because shifting will throw away invalid vertical moves anyway.
 	constexpr Bitboard ShiftNorth() 	const noexcept { return m_board << 8; }
 	constexpr Bitboard ShiftEast() 		const noexcept { return (m_board & NON_FILE_H_MASK) >> 1; }
 	constexpr Bitboard ShiftSouth() 	const noexcept { return m_board >> 8; }

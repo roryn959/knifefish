@@ -17,10 +17,9 @@ Zobrist::Zobrist() :
 	PIECES_LIST
 	#undef X
 
-	#define X(castle) m_castleHashes[static_cast<size_t>(CastlePermission::castle)] = rng();
+	#define X(permission) m_castleHashes[CastlePermission::permission] = rng();
 	CASTLE_PERMISSIONS_LIST
 	#undef X
-
 
 	for (int i = static_cast<size_t>(Square::h3); i <= static_cast<size_t>(Square::a3); ++i) {
 		m_enPassantHashes[i] = rng();

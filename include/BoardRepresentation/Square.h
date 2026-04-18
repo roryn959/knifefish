@@ -3,7 +3,7 @@
 #include <cstdint>
 #include <iostream>
 
-// This gives a mapping from traditional notation (e5) to index on a bitboard (35?)
+// This gives a mapping from traditional notation (e5) to index on a bitboard (35)
 // It starts with h1 because 0 is the bottom-right square, then we move up right-to-left rankwise.
 #define SQUARE_LIST										\
 	X(h1) X(g1) X(f1) X(e1) X(d1) X(c1) X(b1) X(a1)		\

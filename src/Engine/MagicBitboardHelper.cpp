@@ -15,10 +15,46 @@ MagicBitboardHelper::MagicBitboardHelper() :
 	//GenerateOrthogonalRays();
 	//GenerateDiagonalRays();
 
+	//GenerateWhiteKingDefenceMasks();
+	//GenerateBlackKingDefenceMasks();
+
 	// Uncomment these when actually running program!
 	PopulateOrthogonalAttacks();
 	PopulateDiagonalAttacks();
 	PopulateBetweenMasks();
+}
+
+void MagicBitboardHelper::GenerateWhiteKingDefenceMasks() {
+	for (size_t i = static_cast<size_t>(Square::h1); i < static_cast<size_t>(Square::COUNT); ++i) {
+		Bitboard bb{ 1ULL << i };
+		Bitboard mask{ 0ULL };
+
+		mask |= bb.ShiftNorth();
+		mask |= bb.ShiftNorthEast();
+		mask |= bb.ShiftNorthWest();
+		mask |= bb.ShiftNorth().ShiftNorth();
+		mask |= bb.ShiftNorth().ShiftNorthEast();
+		mask |= bb.ShiftNorth().ShiftNorthWest();
+
+		std::cerr << mask.GetBoard() << ", ";
+	}
+}
+
+void MagicBitboardHelper::GenerateBlackKingDefenceMasks() {
+	for (size_t i = static_cast<size_t>(Square::h1); i < static_cast<size_t>(Square::COUNT); ++i) {
+		Bitboard bb{ 1ULL << i };
+		Bitboard mask{ 0ULL };
+
+		mask |= bb.ShiftSouth();
+		mask |= bb.ShiftSouthEast();
+		mask |= bb.ShiftSouthWest();
+		mask |= bb.ShiftSouth().ShiftSouth();
+		mask |= bb.ShiftSouth().ShiftSouthEast();
+		mask |= bb.ShiftSouth().ShiftSouthWest();
+
+		std::cerr << mask.GetBoard() << ", ";
+
+	}
 }
 
 void MagicBitboardHelper::PopulateBetweenMasks(Square square) {
