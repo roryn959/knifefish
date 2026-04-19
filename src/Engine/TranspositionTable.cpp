@@ -21,6 +21,9 @@ const TranspositionTableEntry* TranspositionTable::GetEntry(Hash key) const {
 
 	const TranspositionTableEntry& entry = m_table[index];
 
+	if (entry.m_key == 0)
+		return nullptr;
+
 	if (key == entry.m_key)
 		return &entry;
 	
