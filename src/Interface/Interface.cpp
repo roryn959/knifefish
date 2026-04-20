@@ -32,6 +32,9 @@ void Interface::ListenForCommands() {
 		std::string input;
 		std::getline(std::cin, input);
 
+		if (input.empty())
+			continue;
+
 		std::cerr << "Log: Message received {" << input << "}\n";
 
 		if (!ProcessCommand(input))
@@ -40,10 +43,6 @@ void Interface::ListenForCommands() {
 }
 
 bool Interface::ProcessCommand(std::string input) {
-	if (input == "") {
-		return true;
-	}
-
 	if (input == "show") {
 		std::cout << m_board;
 		return true;
