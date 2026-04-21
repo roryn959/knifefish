@@ -51,7 +51,7 @@ Move Player::Go(int depth, int wtime, int btime, int winc, int binc, int movesto
 	if (timeAllowedSecs > 0.1)
 		timeAllowedSecs -= 0.1;
 
-	std::cerr << "Spending " << timeAllowedSecs << "s on this move.\n\n";
+	std::cerr << "Log: Spending " << timeAllowedSecs << "s on this move.\n";
 
 	m_deadline = startTime + ms(SecsToMillisecs(timeAllowedSecs));
 	Move bestMove = IterativeDeepening(depth);
@@ -192,9 +192,8 @@ int16_t Player::RootNegamax(int8_t depth, const Move& movePv, Move& bestMove) {
 	MoveGenerationParameters params { moves, false };
 	bool check = m_moveGenerator.GenerateMoves(params);
 
-	if (moves.size() == 0) {
-		return check ? -MATE_SCORE : DRAW_SCORE;
-	}
+	if (moves.size() == 0)
+		return check ? (-MATE_SCORE + m_board.GetMoveCount()) : DRAW_SCORE;
 
 	std::array<int, MoveList::MAX_POSSIBLE_MOVES> staticScores;
 	for (int i = 0; i < moves.size(); ++i) {
@@ -241,10 +240,8 @@ int16_t Player::RootNegamax(int8_t depth, const Move& movePv, Move& bestMove) {
 		}
 	}
 
-#if DEBUG
 	std::cerr << "Log: Negamax depth " << (int) depth << " returned an evaluation of " << bestScore << "\n";
 	std::cerr << "Log: Negamax " << (int) depth << " found the best move to be " << bestMove;
-#endif
 
 	return bestScore;
 }
@@ -312,7 +309,7 @@ int16_t Player::Negamax(int8_t depth, int16_t alpha, int16_t beta) {
 	bool check = m_moveGenerator.GenerateMoves(params, context);
 
 	if (moves.size() == 0)
-		return check ? -MATE_SCORE : DRAW_SCORE;
+		return check ? (-MATE_SCORE + m_board.GetMoveCount()) : DRAW_SCORE;
 
 	if (depth == 0)
 		return Quiescence(alpha, beta);
