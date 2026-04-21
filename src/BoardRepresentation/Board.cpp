@@ -237,6 +237,7 @@ Undo Board::MakeMove(const Move& move) {
 		ResetRepetitionStack();
 	
 	PushToRepetitionStack(hash);
+	++m_moveCount;
 
 #if DEBUG
 	CheckKingCount(move);
@@ -375,6 +376,23 @@ void Board::MakeQuietMove(const Location& from, const Location& to, bool& isReve
 		isReversible = false;
 }
 
+Undo Board::MakeNullMove() {
+	Undo undo {
+		Piece::EMPTY,
+		m_enPassantSquare,
+		m_castlePermissions,
+		m_repetitionStackTail
+	};
+
+	SetEnPassantSquare(Square::NONE);
+
+	SwitchTurn();
+
+	++m_moveCount;
+
+	return undo;
+}
+
 void Board::UndoMove(const Move& move, const Undo& undo) {
 	SwitchTurn();
 
@@ -401,8 +419,10 @@ void Board::UndoMove(const Move& move, const Undo& undo) {
 	SetEnPassantSquare(undo.m_enPassantSquare);
 	SetCastlePermissions(undo.m_castlePermissions);
 
-	--m_repetitionStackHead;
+	PopRepetitionStack();
 	m_repetitionStackTail = undo.m_repetitionStackTail;
+
+	--m_moveCount;
 
 #if DEBUG
 	CheckKingCount(move);
@@ -469,27 +489,14 @@ void Board::UndoNormalMove(const Location& from, const Location& to) {
 	SAFE_CALL(PutDown(piece, from));
 }
 
-Undo Board::MakeNullMove() {
-	Undo undo {
-		Piece::EMPTY,
-		m_enPassantSquare,
-		m_castlePermissions,
-		m_repetitionStackTail
-	};
-
-	SetEnPassantSquare(Square::NONE);
-
-	SwitchTurn();
-
-	return undo;
-}
-
 void Board::UndoNullMove(const Undo& undo) {
 	SwitchTurn();
 
 	SetEnPassantSquare(undo.m_enPassantSquare);
 	SetCastlePermissions(undo.m_castlePermissions);
 	m_repetitionStackTail = undo.m_repetitionStackTail;
+
+	--m_moveCount;
 }
 
 std::ostream& operator<<(std::ostream& os, const Board& board) {

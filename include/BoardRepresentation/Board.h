@@ -60,6 +60,8 @@ public:
 
 	Piece GetPieceAtSquare(Square square) const noexcept { return m_boardPieces[static_cast<size_t>(square)]; }
 
+	inline int GetMoveCount() const noexcept { return m_moveCount; }
+
 	inline bool GetCastlePermission(CastlePermission castlePermission) const noexcept { return m_castlePermissions & castlePermission;  }
 
 	inline void SetCastlePermission(CastlePermission castlePermission, bool permitted) noexcept { 
@@ -109,6 +111,7 @@ private:
 
 	inline void ResetRepetitionStack() noexcept { m_repetitionStackTail = m_repetitionStackHead; }
 	inline void PushToRepetitionStack(Hash hash) noexcept { m_repetitionStack.at(m_repetitionStackHead++) = hash; }
+	inline void PopRepetitionStack() noexcept { --m_repetitionStackHead; }
 
 	inline void RegressPhase(Piece piece) noexcept { m_phase += PIECE_PHASE_VALUES[static_cast<size_t>(piece)]; }
 	inline void ProgressPhase(Piece piece) noexcept { m_phase -= PIECE_PHASE_VALUES[static_cast<size_t>(piece)]; }
@@ -118,20 +121,21 @@ private:
 	void CheckKingCount(const Move& move) const;
 #endif
 
-	std::array<Bitboard, Piece::NUM_PIECES> m_pieceBitboards;
-	std::array<Piece, static_cast<size_t>(Square::COUNT)> m_boardPieces;
+	std::array<Bitboard, Piece::NUM_PIECES> 				m_pieceBitboards;
+	std::array<Piece, static_cast<size_t>(Square::COUNT)> 	m_boardPieces;
 
-	uint8_t m_castlePermissions;
+	uint8_t 												m_castlePermissions;
 
+	Square 													m_enPassantSquare;
+	bool 													m_isWhiteTurn;
 
-	Square m_enPassantSquare;
-	bool m_isWhiteTurn;
+	int 													m_moveCount;
 
-	std::array<Hash, 2048>	m_repetitionStack;
-	size_t					m_repetitionStackHead;
-	size_t 					m_repetitionStackTail;
+	std::array<Hash, 2048>									m_repetitionStack;
+	size_t													m_repetitionStackHead;
+	size_t 													m_repetitionStackTail;
 
-	int m_phase;
+	int 													m_phase;
 
-	Zobrist m_zobrist;
+	Zobrist 												m_zobrist;
 };
