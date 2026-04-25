@@ -476,13 +476,12 @@ int16_t Player::Quiescence(int16_t alpha, int16_t beta) {
 		const Move& capture = captures[i];
 
 		int attackerValue = ABSOLUTE_PIECE_VALUES[m_board.GetPieceAtSquare(capture.m_from)];
-		int victimValue = ABSOLUTE_PIECE_VALUES[m_board.GetPieceAtSquare(capture.m_to)];
+		int victimValue = capture.m_isEnPassant ? 100 : ABSOLUTE_PIECE_VALUES[m_board.GetPieceAtSquare(capture.m_to)];
 
 		if ((capture.m_promotionPiece != Piece::EMPTY) && (attackerValue < victimValue))
 			continue;
 
-		int victimScore = ABSOLUTE_PIECE_VALUES[m_board.GetPieceAtSquare(capture.m_to)];
-		if ((capture.m_promotionPiece != Piece::EMPTY) && ((eval + victimScore + DELTA_PRUNE_MARGIN) < alpha))
+		if ((capture.m_promotionPiece != Piece::EMPTY) && ((eval + victimValue + DELTA_PRUNE_MARGIN) < alpha))
 			continue;
 
 		Undo undo = m_board.MakeMove(capture);
