@@ -3,6 +3,7 @@
 #include <ctime>
 #include <iostream>
 #include <sstream>
+#include <vector>
 
 #include "BoardRepresentation/Board.h"
 
@@ -24,13 +25,18 @@ public:
 	bool ProcessCommand(std::string input);
 
 private:
+	bool NewGame();
 	bool Position(std::istringstream& tokenStream);
 	bool StartPosition(std::istringstream& tokenStream);
 	bool FenPosition(std::istringstream& tokenStream);
 	bool Go(std::istringstream& tokenStream);
 	bool Perft(std::istringstream& tokenStream);
 
-	Board m_board;
-	MoveGenerator m_moveGenerator;
-	Player m_player;
+	void FlushCommandHistory();
+
+	Board 						m_board;
+	MoveGenerator 				m_moveGenerator;
+	Player 						m_player;
+
+	std::vector<std::string> 	m_commandHistory;
 };

@@ -3,7 +3,8 @@
 Interface::Interface() :
 	m_board{ Board() },
 	m_moveGenerator{ m_board },
-	m_player{ m_board }
+	m_player{ m_board },
+	m_commandHistory{}
 {}
 
 void Interface::ListenForConnection() {
@@ -35,7 +36,8 @@ void Interface::ListenForCommands() {
 		if (input.empty())
 			continue;
 
-		std::cerr << "Log: Message received {" << input << "}\n";
+		std::cerr << "Log: Message received {" << input << "}\n\n";
+		m_commandHistory.push_back(input);
 
 		if (!ProcessCommand(input))
 			break;
@@ -97,8 +99,7 @@ bool Interface::ProcessCommand(std::string input) {
 	}
 
 	if (input == "ucinewgame") {
-		m_player.ClearTranspositionTable();
-		return true;
+		return NewGame();
 	}
 
 	if (input == "isready") {
@@ -155,6 +156,12 @@ bool Interface::Position(std::istringstream& tokenStream) {
 		std::cerr << "Log: Unrecognised position reference.\n";
 		return false;
 	}
+}
+
+bool Interface::NewGame() {
+	m_player.ClearTranspositionTable();
+	FlushCommandHistory();
+	return true;
 }
 
 bool Interface::StartPosition(std::istringstream& tokenStream) {
@@ -239,4 +246,17 @@ bool Interface::Perft(std::istringstream& tokenStream) {
 	std::cout << "Total: " << totalMoves << '\n' << std::flush;
 
 	return true;
+}
+
+void Interface::FlushCommandHistory() {
+	if (m_commandHistory.empty())
+		return;
+
+	std::cerr << "Log: Flushing command history...\n";
+	for (std::string& command : m_commandHistory) {
+		std::cerr << "interface.ProcessCommand(\"" << command << "\");\n";
+	}
+	m_commandHistory.clear();
+
+	std::cerr << '\n';
 }
