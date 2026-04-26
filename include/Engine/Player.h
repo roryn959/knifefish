@@ -37,6 +37,8 @@ constexpr int16_t DRAW_SCORE { 0 };
 constexpr int16_t MATE_SCORE { 30'000 };
 constexpr int16_t MAX_SCORE { 32'000 };
 
+constexpr int16_t MATE_THRESHOLD { 25'000 };
+
 constexpr std::array<int, static_cast<size_t>(Piece::NUM_PIECES)> MG_PIECE_VALUES { 82, 337, 365, 477, 1025, 10000, -82, -337, -365, -477, -1025, -10000 };
 constexpr std::array<int, static_cast<size_t>(Piece::NUM_PIECES)> EG_PIECE_VALUES { 94, 281, 297, 512, 936, 10000, -94, -281, -297, -512, -936, -10000 };
 

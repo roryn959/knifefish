@@ -51,7 +51,7 @@ Move Player::Go(int depth, int wtime, int btime, int winc, int binc, int movesto
 	if (timeAllowedSecs > 0.1)
 		timeAllowedSecs -= 0.1;
 
-	std::cerr << "Log: Spending " << timeAllowedSecs << "s on this move.\n";
+	std::cerr << "Log: Spending " << timeAllowedSecs << "s on this move.\n\n";
 
 	m_deadline = startTime + ms(SecsToMillisecs(timeAllowedSecs));
 	Move bestMove = IterativeDeepening(depth);
@@ -151,11 +151,10 @@ Move Player::IterativeDeepening(int8_t maxDepth) {
 		Move bestMove;
 		scorePv = RootNegamax(depth, movePv, bestMove);
 
-		if (m_isStopped)
+		if (m_isStopped || scorePv > MATE_THRESHOLD)
 			break;
 
 		movePv = bestMove;
-
 		++depth;
 
 #if DEBUG
