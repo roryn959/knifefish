@@ -60,6 +60,24 @@ constexpr inline char GetChar(Piece p) {
 	}
 }
 
+constexpr inline Piece GetPieceFromChar(char c) {
+	switch (c) {
+		case ('P'):	return Piece::WHITE_PAWN;
+		case ('N'): return Piece::WHITE_KNIGHT;
+		case ('B'): return Piece::WHITE_BISHOP;
+		case ('R'): return Piece::WHITE_ROOK;
+		case ('Q'): return Piece::WHITE_QUEEN;
+		case ('K'): return Piece::WHITE_KING;
+		case ('p'):	return Piece::BLACK_PAWN;
+		case ('n'): return Piece::BLACK_KNIGHT;
+		case ('b'): return Piece::BLACK_BISHOP;
+		case ('r'): return Piece::BLACK_ROOK;
+		case ('q'): return Piece::BLACK_QUEEN;
+		case ('k'): return Piece::BLACK_KING;
+		default:	return Piece::EMPTY;
+	}
+}
+
 constexpr inline bool IsEmpty(Piece p) { return p == Piece::EMPTY; }
 constexpr inline bool IsWhite(Piece p) { return Piece::WHITE_PAWN <= p && p <= Piece::WHITE_KING; }
 constexpr inline bool IsBlack(Piece p) { return Piece::BLACK_PAWN <= p && p <= Piece::BLACK_KING; }

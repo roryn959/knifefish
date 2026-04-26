@@ -147,15 +147,20 @@ bool Interface::Position(std::istringstream& tokenStream) {
 	tokenStream >> token;
 
 	if (token == "fen") {
-		std::cerr << "Log: fen position indicated. Currently not supported\n";
-		return false;
+		m_board.SetUpFenPosition(tokenStream);
+		return true;
 	} else if (token == "startpos") {
-		m_board.SetUpStartPosition();
+		return StartPosition(tokenStream);
 	} else {
 		std::cerr << "Log: Unrecognised position reference.\n";
 		return false;
 	}
+}
 
+bool Interface::StartPosition(std::istringstream& tokenStream) {
+	m_board.SetUpStartPosition();
+
+	std::string token;
 	if (!(tokenStream >> token))
 		return true;
 

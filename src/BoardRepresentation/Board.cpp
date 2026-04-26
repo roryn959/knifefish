@@ -26,13 +26,18 @@ void Board::SetUpStartPosition() {
 
 	m_enPassantSquare = Square::NONE;
 
-	#define X(piece) m_pieceBitboards[Piece::piece] = GetStartingPositionBitboard<Piece::piece>();
+	#define X(piece) m_pieceBitboards[Piece::piece] = 0ULL;
 	PIECES_LIST
 	#undef X
 
 	m_boardPieces.fill(Piece::EMPTY);
 
-	#define X(piece) for (Square square : m_pieceBitboards[Piece::piece]) { m_boardPieces[static_cast<size_t>(square)] = Piece::piece; }
+	Bitboard bb;
+	#define X(piece) 												\
+	bb = GetStartingPositionBitboard<Piece::piece>();		\
+	for (Square sq : bb)											\
+		PutDown(Piece::piece, sq);
+	
 	PIECES_LIST
 	#undef X
 
@@ -41,6 +46,109 @@ void Board::SetUpStartPosition() {
 	m_phase = START_PHASE;
 
 	RebuildHash();
+}
+
+void Board::SetUpFenPosition(std::istringstream& tokenStream) {
+
+	int j = 63;
+	std::array<Piece, static_cast<size_t>(Square::COUNT)> piecePositions;
+	piecePositions.fill(Piece::EMPTY);
+
+	// Parse piece positions
+
+	std::string piecePositionString;
+	if (!(tokenStream >> piecePositionString))
+		std::exit(1);
+
+	for (char c : piecePositionString) {
+		if (c == '/')
+			continue;
+		
+		Piece piece = GetPieceFromChar(c);
+		if (piece == Piece::EMPTY) {
+			int spaces = c - '0';
+			j -= spaces;
+			continue;
+		}
+
+		piecePositions[j--] = piece;
+	}
+
+	// Put all those pieces into their bitboards.
+
+	#define X(piece) m_pieceBitboards[static_cast<size_t>(Piece::piece)] = 0ULL;
+	PIECES_LIST
+	#undef X
+
+	m_boardPieces.fill(Piece::EMPTY);
+
+	#define X(square) PutDown(piecePositions[static_cast<size_t>(Square::square)], Square::square);
+	SQUARE_LIST
+	#undef X
+
+	// Who's turn to move?
+
+	std::string turnToMoveString;
+	if (!(tokenStream >> turnToMoveString))
+		std::exit(1);
+
+	if (turnToMoveString == "w")
+		m_isWhiteTurn = true;
+	else if (turnToMoveString == "b")
+		m_isWhiteTurn = false;
+	else
+		std::exit(1);
+
+	// Castling rights
+
+	SetCastlePermission(CastlePermission::WHITE_KINGSIDE, false);
+	SetCastlePermission(CastlePermission::WHITE_QUEENSIDE, false);
+	SetCastlePermission(CastlePermission::BLACK_KINGSIDE, false);
+	SetCastlePermission(CastlePermission::BLACK_QUEENSIDE, false);
+
+	std::string castlesString;
+	if (!(tokenStream >> castlesString))
+		std::exit(1);
+
+	for (char c : castlesString) {
+		if (c == 'K')
+			SetCastlePermission(CastlePermission::WHITE_KINGSIDE, true);
+		else if (c == 'Q')
+			SetCastlePermission(CastlePermission::WHITE_QUEENSIDE, true);
+		else if (c == 'k')
+			SetCastlePermission(CastlePermission::BLACK_KINGSIDE, true);
+		else if (c == 'q')
+			SetCastlePermission(CastlePermission::BLACK_QUEENSIDE, true);
+		else
+			std::exit(1);
+	}
+
+	// En passant
+
+	std::string enPassantString;
+	if (!(tokenStream >> enPassantString))
+		std::exit(1);
+
+	m_enPassantSquare = StringToSquare(enPassantString); // !!! Check if this en passant square is actually relevant
+
+	// For now I'm ignoring the 50-move count and the halfmove clock and the fullmove number
+
+	m_repetitionStackTail = m_repetitionStackHead = 0;
+
+	// Calculate phase
+	m_phase = END_PHASE;
+	Piece piece;
+	#define X(square) 												\
+																	\
+	piece = m_boardPieces[static_cast<size_t>(Square::square)]; 	\
+	if (piece != Piece::EMPTY)										\
+		ProgressPhase(piece);
+
+	SQUARE_LIST
+	#undef X
+
+	RebuildHash();
+
 }
 
 #if DEBUG

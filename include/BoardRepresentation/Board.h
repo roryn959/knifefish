@@ -2,6 +2,7 @@
 
 #include <array>
 #include <iostream>
+#include <sstream>
 
 #include "Config.h"
 #include "BoardRepresentation/Pieces.h"
@@ -13,6 +14,7 @@
 #define MAX_REVERSIBLE_MOVES 100
 
 #define START_PHASE 24
+#define END_PHASE 0
 constexpr std::array<int, static_cast<size_t>(Piece::NUM_PIECES)> PIECE_PHASE_VALUES { 0, 1, 1, 2, 4, 0, 0, 1, 1, 2, 4, 0 };
 
 // Macro to do a safe call during move stuff.
@@ -44,6 +46,7 @@ public:
 	Board();
 
 	void SetUpStartPosition();
+	void SetUpFenPosition(std::istringstream& tokenStream);
 
 	Undo MakeMove(const Move& move);
 	void UndoMove(const Move& move, const Undo& undo);
@@ -105,9 +108,11 @@ private:
 
 	bool PickUp(Piece piece, const Location& loc);
 	inline bool PickUp(Piece piece, Bitboard bb) { return PickUp(piece, Location{ static_cast<Square>(bb), bb }); }
+	inline bool PickUp(Piece piece, Square square) { return PickUp(piece, Location{ square, Bitboard{square} }); }
 
 	bool PutDown(Piece piece, const Location& loc);
 	inline bool PutDown(Piece piece, Bitboard bb) { return PutDown(piece, Location{ static_cast<Square>(bb), bb }); }
+	inline bool PutDown(Piece piece, Square square) { return PutDown(piece, Location{ square, Bitboard{square} }); }
 
 	inline void ResetRepetitionStack() noexcept { m_repetitionStackTail = m_repetitionStackHead; }
 	inline void PushToRepetitionStack(Hash hash) noexcept { m_repetitionStack.at(m_repetitionStackHead++) = hash; }
