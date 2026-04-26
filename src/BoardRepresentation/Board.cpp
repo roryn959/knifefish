@@ -339,12 +339,11 @@ Undo Board::MakeMove(const Move& move) {
 		MakeQuietMove(from, to, isReversible);
 	}
 
-	SwitchTurn();
-
 	if (!isReversible)
 		ResetRepetitionStack();
 	
 	PushToRepetitionStack(hash);
+	SwitchTurn();
 	++m_moveCount;
 
 #if DEBUG
@@ -493,9 +492,7 @@ Undo Board::MakeNullMove() {
 	};
 
 	SetEnPassantSquare(Square::NONE);
-
 	SwitchTurn();
-
 	++m_moveCount;
 
 	return undo;
@@ -526,10 +523,8 @@ void Board::UndoMove(const Move& move, const Undo& undo) {
 
 	SetEnPassantSquare(undo.m_enPassantSquare);
 	SetCastlePermissions(undo.m_castlePermissions);
-
 	PopRepetitionStack();
 	m_repetitionStackTail = undo.m_repetitionStackTail;
-
 	--m_moveCount;
 
 #if DEBUG
@@ -599,11 +594,9 @@ void Board::UndoNormalMove(const Location& from, const Location& to) {
 
 void Board::UndoNullMove(const Undo& undo) {
 	SwitchTurn();
-
 	SetEnPassantSquare(undo.m_enPassantSquare);
 	SetCastlePermissions(undo.m_castlePermissions);
 	m_repetitionStackTail = undo.m_repetitionStackTail;
-
 	--m_moveCount;
 }
 
