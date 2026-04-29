@@ -53,7 +53,6 @@ void Board::SetUpFenPosition(std::istringstream& tokenStream) {
 	piecePositions.fill(Piece::EMPTY);
 
 	// Parse piece positions
-
 	std::string piecePositionString;
 	if (!(tokenStream >> piecePositionString))
 		std::exit(1);
@@ -73,7 +72,6 @@ void Board::SetUpFenPosition(std::istringstream& tokenStream) {
 	}
 
 	// Put all those pieces into their bitboards.
-
 	#define X(piece) m_pieceBitboards[static_cast<size_t>(Piece::piece)] = 0ULL;
 	PIECES_LIST
 	#undef X
@@ -85,7 +83,6 @@ void Board::SetUpFenPosition(std::istringstream& tokenStream) {
 	#undef X
 
 	// Who's turn to move?
-
 	std::string turnToMoveString;
 	if (!(tokenStream >> turnToMoveString))
 		std::exit(1);
@@ -98,7 +95,6 @@ void Board::SetUpFenPosition(std::istringstream& tokenStream) {
 		std::exit(1);
 
 	// Castling rights
-
 	SetCastlePermission(CastlePermission::WHITE_KINGSIDE, false);
 	SetCastlePermission(CastlePermission::WHITE_QUEENSIDE, false);
 	SetCastlePermission(CastlePermission::BLACK_KINGSIDE, false);
@@ -122,12 +118,16 @@ void Board::SetUpFenPosition(std::istringstream& tokenStream) {
 	}
 
 	// En passant
-
 	std::string enPassantString;
 	if (!(tokenStream >> enPassantString))
 		std::exit(1);
 
-	m_enPassantSquare = StringToSquare(enPassantString); // !!! Check if this en passant square is actually relevant
+	Square enPassantSquare = StringToSquare(enPassantString);
+	Bitboard enPassantBB{enPassantSquare};
+	Bitboard movedPawnBB = m_isWhiteTurn ? enPassantBB.ShiftSouth() : enPassantBB.ShiftNorth();
+	Piece attackingPawnPiece = m_isWhiteTurn ? Piece::WHITE_PAWN : Piece::BLACK_PAWN;
+	Bitboard attackingPawnBB = m_pieceBitboards[static_cast<size_t>(attackingPawnPiece)] & (movedPawnBB.ShiftEast() | movedPawnBB.ShiftWest());
+	m_enPassantSquare = attackingPawnBB.Any() ? enPassantSquare : Square::NONE;
 
 	// For now I'm ignoring the 50-move count and the halfmove clock and the fullmove number
 
