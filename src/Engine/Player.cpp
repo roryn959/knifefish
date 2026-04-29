@@ -106,8 +106,6 @@ int16_t Player::Evaluate() {
 	return static_cast<int16_t>(eval);
 }
 
-
-
 Move Player::IterativeDeepening(int8_t maxDepth) {
 	m_nodesSearched = 0;
 	m_isStopped = false;
@@ -258,15 +256,14 @@ int16_t Player::Negamax(int8_t depth, int16_t alpha, int16_t beta, bool nmp) {
 
 	Hash hash = m_board.GetHash();
 	const TranspositionTableEntry* pEntry = m_transpositionTable.GetEntry(hash);
-
 	bool isTransposition = pEntry != nullptr;
 
 	if (isTransposition && (pEntry->m_depth >= depth)) {
-		switch (pEntry->m_evaluationType) {
-			case EvaluationType::EXACT: {
 #if DEBUG
 				++m_transpositionsHit;
 #endif
+		switch (pEntry->m_evaluationType) {
+			case EvaluationType::EXACT: {
 				return pEntry->m_score;
 			}
 			case EvaluationType::LOWER_BOUND: {
@@ -393,7 +390,6 @@ int16_t Player::Quiescence(int16_t alpha, int16_t beta) {
 
 	Hash hash = m_board.GetHash();
 	const TranspositionTableEntry* pEntry = m_transpositionTable.GetEntry(hash);
-
 	bool isTransposition = pEntry != nullptr;
 
 	if (isTransposition && pEntry->m_depth == 0) {

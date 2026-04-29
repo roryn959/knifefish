@@ -126,7 +126,7 @@ bool MoveGenerator::IsZugzwangLikely(const MoveGenerationContext& context) const
 	bool onlyPawnsAndKing = (context.m_friendlyPieceBB & ~context.m_friendlyPawnBB & ~context.m_friendlyKingBB).Empty();
 	bool inCheck = IsCheck(context);
 
-	return (!inCheck && onlyPawnsAndKing);
+	return (inCheck || onlyPawnsAndKing);
 }
 
 bool MoveGenerator::GenerateMoves(const MoveGenerationParameters& params) const {
