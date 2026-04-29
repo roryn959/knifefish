@@ -107,25 +107,7 @@ int16_t Player::Evaluate() {
 	return static_cast<int16_t>(eval);
 }
 
-bool Player::CheckForPotentialRepetition(int8_t depth) {
-	if (depth == 0)
-		return m_board.CheckQuietDraws();
 
-	MoveList moves;
-	MoveGenerationParameters params { moves, false };
-	(void) m_moveGenerator.GenerateMoves(params);
-
-	for (const Move& move : moves) {
-		Undo undo = m_board.MakeMove(move);
-		bool draw = CheckForPotentialRepetition(depth - 1);
-		m_board.UndoMove(move, undo);
-
-		if (draw)
-			return true;
-	}
-
-	return false;
-}
 
 Move Player::IterativeDeepening(int8_t maxDepth) {
 	m_nodesSearched = 0;
@@ -138,8 +120,10 @@ Move Player::IterativeDeepening(int8_t maxDepth) {
 	m_killers.Reset();
 
 	// Hack: Check if there is a chance we will threefold repeat. If so, clear TT table to make sure we don't use old value and repeat when winning.
-	if (CheckForPotentialRepetition())
+	if (m_board.IsRepeatPosition()) {
+		std::cerr << "Rep\n";
 		m_transpositionTable.Clear();
+	}
 
 	while (depth <= maxDepth) {
 	
@@ -151,10 +135,22 @@ Move Player::IterativeDeepening(int8_t maxDepth) {
 		Move bestMove;
 		scorePv = RootNegamax(depth, movePv, bestMove);
 
-		if (m_isStopped || scorePv > MATE_THRESHOLD)
+		if (m_isStopped) {
+#if DEBUG
+			std::cerr << "Log: Stopping search.\n\n";
+#endif
 			break;
+		}
 
 		movePv = bestMove;
+
+		if (scorePv > MATE_THRESHOLD) {
+#if DEBUG
+			std::cerr << "Log: Mate found! Stopping search.\n\n";
+#endif
+			break;
+		}
+
 		++depth;
 
 #if DEBUG

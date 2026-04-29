@@ -34,7 +34,7 @@ void Board::SetUpStartPosition() {
 
 	Bitboard bb;
 	#define X(piece) 												\
-	bb = GetStartingPositionBitboard<Piece::piece>();		\
+	bb = GetStartingPositionBitboard<Piece::piece>();				\
 	for (Square sq : bb)											\
 		PutDown(Piece::piece, sq);
 	
@@ -42,9 +42,7 @@ void Board::SetUpStartPosition() {
 	#undef X
 
 	m_repetitionStackTail = m_repetitionStackHead = 0;
-
 	m_phase = START_PHASE;
-
 	RebuildHash();
 }
 
@@ -133,8 +131,6 @@ void Board::SetUpFenPosition(std::istringstream& tokenStream) {
 
 	// For now I'm ignoring the 50-move count and the halfmove clock and the fullmove number
 
-	m_repetitionStackTail = m_repetitionStackHead = 0;
-
 	// Calculate phase
 	m_phase = END_PHASE;
 	Piece piece;
@@ -147,8 +143,8 @@ void Board::SetUpFenPosition(std::istringstream& tokenStream) {
 	SQUARE_LIST
 	#undef X
 
+	m_repetitionStackTail = m_repetitionStackHead = 0;
 	RebuildHash();
-
 }
 
 #if DEBUG
@@ -185,6 +181,19 @@ void Board::CheckKingCount(const Move& move) const {
 	}
 }
 #endif
+
+bool Board::IsRepeatPosition() const noexcept {
+	Hash hash = GetHash();
+
+	for (size_t i = m_repetitionStackTail; i < m_repetitionStackHead; ++i) {
+		Hash currentHash = m_repetitionStack[i];
+
+		if (currentHash == hash)
+			return true;
+	}
+
+	return false;
+}
 
 bool Board::CheckQuietDraws() const noexcept {
 	size_t numReversibleMoves = m_repetitionStackHead - m_repetitionStackTail;

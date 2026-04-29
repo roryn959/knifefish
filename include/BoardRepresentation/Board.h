@@ -83,6 +83,8 @@ public:
 	inline bool IsWhiteTurn() const noexcept { return m_isWhiteTurn; }
 	inline void SwitchTurn() noexcept { m_isWhiteTurn = !m_isWhiteTurn; m_zobrist.ApplyWhiteTurnHash(); }
 
+	bool IsRepeatPosition() const noexcept;
+
 	bool CheckQuietDraws() const noexcept;
 
 	inline int GetPhase() const noexcept { return (m_phase > START_PHASE) ? START_PHASE : m_phase; }

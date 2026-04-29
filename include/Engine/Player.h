@@ -285,8 +285,6 @@ public:
 private:
 	void InitialisePieceSquareTables();
 
-	bool CheckForPotentialRepetition(int8_t depth = 2);
-
 	Move IterativeDeepening(int8_t maxDepth);
 
 	int16_t RootNegamax(int8_t depth, const Move& movePv, Move& bestMove);
