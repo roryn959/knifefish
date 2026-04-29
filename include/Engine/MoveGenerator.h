@@ -89,6 +89,8 @@ public:
 	bool IsCheck() const;
 	bool IsCheck(const MoveGenerationContext& context) const;
 
+	bool IsZugzwangLikely(const MoveGenerationContext& context) const;
+
 private:
 	void GeneratePawnMoves(const MoveGenerationParameters& params, const MoveGenerationContext& context) const;
 	void GenerateWhitePawnMoves(const MoveGenerationParameters& params, const MoveGenerationContext& context) const;

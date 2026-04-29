@@ -61,7 +61,6 @@ Move Player::Go(int depth, int wtime, int btime, int winc, int binc, int movesto
 	auto searchTimeS = std::chrono::duration_cast<ms>(searchTime).count() / 1000.0;
 	std::cerr << "Log: Nodes searched: " << m_nodesSearched << '\n';
 	std::cerr << "Log: Search speed (nps): " << m_nodesSearched / searchTimeS << '\n';
-	std::cerr << "Log: Transpositions hit: " << m_transpositionsHit << '\n';
 	std::cerr << "Log: Search time (s): " << searchTimeS << "\n\n";
 #endif
 
@@ -120,10 +119,8 @@ Move Player::IterativeDeepening(int8_t maxDepth) {
 	m_killers.Reset();
 
 	// Hack: Check if there is a chance we will threefold repeat. If so, clear TT table to make sure we don't use old value and repeat when winning.
-	if (m_board.IsRepeatPosition()) {
-		std::cerr << "Rep\n";
+	if (m_board.IsRepeatPosition())
 		m_transpositionTable.Clear();
-	}
 
 	while (depth <= maxDepth) {
 	
@@ -156,6 +153,7 @@ Move Player::IterativeDeepening(int8_t maxDepth) {
 #if DEBUG
 		std::cerr << "Log: Current depth nodes: " << m_currentDepthNodes << '\n';
 		std::cerr << "Log: Current depth quiescence nodes searched: " << m_quiescenceNodesSearched << '\n';
+		std::cerr << "Log: Transpositions hit: " << m_transpositionsHit << '\n';
 		float ebf = pow(m_currentDepthNodes, (1.0f / depth));
 		std::cerr << "Log: EBF: " << ebf << "\n\n"; 
 #endif
@@ -241,7 +239,7 @@ int16_t Player::RootNegamax(int8_t depth, const Move& movePv, Move& bestMove) {
 	return bestScore;
 }
 
-int16_t Player::Negamax(int8_t depth, int16_t alpha, int16_t beta) {
+int16_t Player::Negamax(int8_t depth, int16_t alpha, int16_t beta, bool nmp) {
 	++m_nodesSearched;
 #if DEBUG
 	++m_currentDepthNodes;
@@ -288,9 +286,9 @@ int16_t Player::Negamax(int8_t depth, int16_t alpha, int16_t beta) {
 
 	MoveGenerationContext context = m_moveGenerator.GetMoveGenerationContext();
 
-	if (m_board.GetPhase() > NULL_MOVE_PHASE_LIMIT && !m_moveGenerator.IsCheck(context) && (depth > (NULL_MOVE_PRUNING_REDUCTION + 1))) {
+	if (!m_moveGenerator.IsZugzwangLikely(context) && (depth > (NULL_MOVE_PRUNING_REDUCTION + 1)) && !nmp) {
 		Undo undo = m_board.MakeNullMove();
-		int16_t score = -Negamax(depth - NULL_MOVE_PRUNING_REDUCTION, -beta, -(beta - 1));
+		int16_t score = -Negamax(depth - NULL_MOVE_PRUNING_REDUCTION, -beta, -(beta - 1), true);
 		m_board.UndoNullMove(undo);
 
 
@@ -399,11 +397,11 @@ int16_t Player::Quiescence(int16_t alpha, int16_t beta) {
 	bool isTransposition = pEntry != nullptr;
 
 	if (isTransposition && pEntry->m_depth == 0) {
-		switch (pEntry->m_evaluationType) {
-			case EvaluationType::EXACT: {
 #if DEBUG
 				++m_transpositionsHit;
 #endif
+		switch (pEntry->m_evaluationType) {
+			case EvaluationType::EXACT: {
 				return pEntry->m_score;
 			}
 			case EvaluationType::LOWER_BOUND: {
