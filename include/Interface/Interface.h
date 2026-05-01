@@ -25,10 +25,8 @@ public:
 	bool ProcessCommand(std::string input);
 
 private:
-	bool NewGame();
 	bool Position(std::istringstream& tokenStream);
 	bool StartPosition(std::istringstream& tokenStream);
-	bool FenPosition(std::istringstream& tokenStream);
 	bool Go(std::istringstream& tokenStream);
 	bool Perft(std::istringstream& tokenStream);
 

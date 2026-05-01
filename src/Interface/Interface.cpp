@@ -93,13 +93,15 @@ bool Interface::ProcessCommand(std::string input) {
 	}
 
 	if (input == "quit") {
+		FlushCommandHistory();
 		time_t connectionTime = time(nullptr);
 		std::cerr << "Log: Connection closed at " << ctime(&connectionTime) << '\n';
 		return false;
 	}
 
 	if (input == "ucinewgame") {
-		return NewGame();
+		m_player.ClearTranspositionTable();
+		return true;
 	}
 
 	if (input == "isready") {
@@ -156,12 +158,6 @@ bool Interface::Position(std::istringstream& tokenStream) {
 		std::cerr << "Log: Unrecognised position reference.\n";
 		return false;
 	}
-}
-
-bool Interface::NewGame() {
-	m_player.ClearTranspositionTable();
-	FlushCommandHistory();
-	return true;
 }
 
 bool Interface::StartPosition(std::istringstream& tokenStream) {
