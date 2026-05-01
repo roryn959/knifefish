@@ -24,12 +24,12 @@ do {																				\
 	if (!(expr)) {																	\
 		std::cerr << "Error while executing " << #expr << '\n';						\
 		std::cerr << *this;															\
-		assert(false);																\
+		std::exit(1);																\
 	} 																				\
 	if (!CheckBoardOccupancy()) {													\
 		std::cerr << "Board occupancy failure after executing " << #expr << '\n';	\
 		std::cerr << *this;															\
-		std::abort();																\
+		std::exit(1);																\
 		}																			\
 } while (false)
 #else

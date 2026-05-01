@@ -198,6 +198,7 @@ int16_t Player::RootNegamax(int8_t depth, const Move& movePv, Move& bestMove) {
 			staticScores[i] = moves[i].m_score;
 	}
 
+	int8_t ply = 0;
 	int16_t bestScore = -MAX_SCORE;
 	int16_t alpha = -MAX_SCORE;
 	int16_t beta = MAX_SCORE;
@@ -216,7 +217,7 @@ int16_t Player::RootNegamax(int8_t depth, const Move& movePv, Move& bestMove) {
 		const Move& move = moves[i];
 
 		Undo undo = m_board.MakeMove(move);
-		int16_t score = -Negamax(depth - 1, -beta, -alpha);
+		int16_t score = -Negamax(depth - 1, ++ply, -beta, -alpha);
 		m_board.UndoMove(move, undo);
 
 		if (m_isStopped)
@@ -237,7 +238,7 @@ int16_t Player::RootNegamax(int8_t depth, const Move& movePv, Move& bestMove) {
 	return bestScore;
 }
 
-int16_t Player::Negamax(int8_t depth, int16_t alpha, int16_t beta, bool nmp) {
+int16_t Player::Negamax(int8_t depth, int8_t ply, int16_t alpha, int16_t beta, bool nmp) {
 	++m_nodesSearched;
 #if DEBUG
 	++m_currentDepthNodes;
@@ -264,6 +265,12 @@ int16_t Player::Negamax(int8_t depth, int16_t alpha, int16_t beta, bool nmp) {
 #endif
 		switch (pEntry->m_evaluationType) {
 			case EvaluationType::EXACT: {
+				// When using a TT mate score, penalise it by however far away from the position is from root
+				// because if the current position is mate in N and it has taken M plies to get here, it's a mate in N+M.
+				if (pEntry->m_score > MATE_THRESHOLD)
+					return pEntry->m_score - ply;
+				if (pEntry->m_score < -MATE_THRESHOLD)
+					return pEntry->m_score + ply;
 				return pEntry->m_score;
 			}
 			case EvaluationType::LOWER_BOUND: {
@@ -285,9 +292,8 @@ int16_t Player::Negamax(int8_t depth, int16_t alpha, int16_t beta, bool nmp) {
 
 	if (!m_moveGenerator.IsZugzwangLikely(context) && (depth > (NULL_MOVE_PRUNING_REDUCTION + 1)) && !nmp) {
 		Undo undo = m_board.MakeNullMove();
-		int16_t score = -Negamax(depth - NULL_MOVE_PRUNING_REDUCTION, -beta, -(beta - 1), true);
+		int16_t score = -Negamax(depth - NULL_MOVE_PRUNING_REDUCTION, ++ply, -beta, -(beta - 1), true);
 		m_board.UndoNullMove(undo);
-
 
 		if (score >= beta) {
 			return score;
@@ -299,10 +305,10 @@ int16_t Player::Negamax(int8_t depth, int16_t alpha, int16_t beta, bool nmp) {
 	bool check = m_moveGenerator.GenerateMoves(params, context);
 
 	if (moves.size() == 0)
-		return check ? (-MATE_SCORE + m_board.GetMoveCount()) : DRAW_SCORE;
+		return check ? (-MATE_SCORE + ply) : DRAW_SCORE;
 
 	if (depth == 0)
-		return Quiescence(alpha, beta);
+		return Quiescence(++ply, alpha, beta);
 
 	std::array<int, MoveList::MAX_POSSIBLE_MOVES> staticScores;
 	for (int i = 0; i < moves.size(); ++i) {
@@ -334,7 +340,7 @@ int16_t Player::Negamax(int8_t depth, int16_t alpha, int16_t beta, bool nmp) {
 		const Move& move = moves[i];
 
 		Undo undo = m_board.MakeMove(move);
-		int16_t score = -Negamax(depth - 1, -beta, -alpha);
+		int16_t score = -Negamax(depth - 1, ++ply, -beta, -alpha);
 		m_board.UndoMove(move, undo);
 
 		if (score > bestScore) {
@@ -371,7 +377,7 @@ int16_t Player::Negamax(int8_t depth, int16_t alpha, int16_t beta, bool nmp) {
 	return bestScore;
 }
 
-int16_t Player::Quiescence(int16_t alpha, int16_t beta) {
+int16_t Player::Quiescence(int8_t ply, int16_t alpha, int16_t beta) {
 	++m_nodesSearched;
 #if DEBUG
 	++m_quiescenceNodesSearched;
@@ -398,6 +404,12 @@ int16_t Player::Quiescence(int16_t alpha, int16_t beta) {
 #endif
 		switch (pEntry->m_evaluationType) {
 			case EvaluationType::EXACT: {
+				// When using a TT mate score, penalise it by however far away from the position is from root
+				// because if the current position is mate in N and it has taken M plies to get here, it's a mate in N+M.
+				if (pEntry->m_score > MATE_THRESHOLD)
+					return pEntry->m_score - ply;
+				if (pEntry->m_score < -MATE_THRESHOLD)
+					return pEntry->m_score + ply;
 				return pEntry->m_score;
 			}
 			case EvaluationType::LOWER_BOUND: {
@@ -474,7 +486,7 @@ int16_t Player::Quiescence(int16_t alpha, int16_t beta) {
 			continue;
 
 		Undo undo = m_board.MakeMove(capture);
-		int16_t score = -Quiescence(-beta, -alpha);
+		int16_t score = -Quiescence(++ply, -beta, -alpha);
 		m_board.UndoMove(capture, undo);
 
 		if (score > bestScore) {

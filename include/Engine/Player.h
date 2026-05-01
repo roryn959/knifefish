@@ -287,9 +287,9 @@ private:
 	Move IterativeDeepening(int8_t maxDepth);
 
 	int16_t RootNegamax(int8_t depth, const Move& movePv, Move& bestMove);
-	int16_t Negamax(int8_t depth, int16_t alpha, int16_t beta, bool nmp = false);
+	int16_t Negamax(int8_t depth, int8_t ply, int16_t alpha, int16_t beta, bool nmp = false);
 
-	int16_t Quiescence(int16_t alpha, int16_t beta);
+	int16_t Quiescence(int8_t ply, int16_t alpha, int16_t beta);
 
 	void PrintPv(int8_t depth);
 

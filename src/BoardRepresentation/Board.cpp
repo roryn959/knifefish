@@ -1,7 +1,5 @@
 #include "BoardRepresentation/Board.h"
 
-#include <cassert>
-
 Board::Board() :
 	m_pieceBitboards{},
 	m_boardPieces{},
