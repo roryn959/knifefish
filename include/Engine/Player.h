@@ -11,6 +11,7 @@
 #include "Engine/MagicBitboardHelper.h"
 #include "Engine/Move.h"
 #include "Engine/MoveGenerator.h"
+#include "Engine/PrincipleVariation.h"
 #include "Engine/TranspositionTable.h"
 #include "Engine/Undo.h"
 
@@ -32,12 +33,14 @@ private:
 
 	Move IterativeDeepening(int8_t maxDepth);
 
-	int16_t RootNegamax(int8_t depth, int16_t alpha, int16_t beta, const Move& movePv, Move& bestMove);
+	int16_t RootNegamax(int8_t depth, int16_t alpha, int16_t beta, const Move& prevBestMove, Move& bestMove);
 	int16_t Negamax(int8_t depth, int8_t ply, int16_t alpha, int16_t beta, bool nmp = false);
 
 	int16_t Quiescence(int8_t ply, int16_t alpha, int16_t beta);
 
+#if DEBUG
 	void PrintPv(int8_t depth);
+#endif
 
 	int Perft(int8_t depth);
 
@@ -45,6 +48,9 @@ private:
 	MoveGenerator 			m_moveGenerator;
 	TranspositionTable 		m_transpositionTable;
 	Killers					m_killers;
+#if DEBUG
+	PrincipleVariation		m_principleVariation;
+#endif
 
 	int 	m_nodesSearched;
 

@@ -16,10 +16,12 @@ constexpr int SecsToMillisecs(double secs) { return round(secs * 1000.0); }
 
 #define TIME_CHECK_FREQUENCY 2048
 
-#define MAX_DEPTH 30
+#define MAX_DEPTH 50
 #define DELTA_PRUNE_MARGIN 200
 #define NULL_MOVE_PRUNING_REDUCTION 4
 #define ASPIRATION_WINDOW_DELTA 25
+
+constexpr Move GARBAGE_MOVE{ 0, Square::NONE, Square::NONE };
 
 constexpr int16_t NO_SCORE { 0 };
 constexpr int16_t DRAW_SCORE { 0 };

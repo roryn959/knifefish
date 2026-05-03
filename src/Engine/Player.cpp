@@ -6,6 +6,9 @@ Player::Player(Board& board) :
 	m_moveGenerator{m_board},
 	m_transpositionTable{},
 	m_killers{},
+#if DEBUG
+	m_principleVariation{},
+#endif
 	m_nodesSearched{0},
 	m_deadline{},
 	m_isStopped{false}
@@ -110,17 +113,15 @@ Move Player::IterativeDeepening(int8_t maxDepth) {
 	m_nodesSearched = 0;
 	m_isStopped = false;
 
-	// Initialise PV move to garbage move that will never clash with anything
-	Move movePv{ QUIET_MOVE_BASE_SCORE, Square::NONE, Square::NONE };
-	int16_t scorePv;
-	int8_t depth = 1;
 	m_killers.Reset();
 
 	// Hack: Check if there is a chance we will threefold repeat. If so, clear TT table to make sure we don't use old value and repeat when winning.
 	if (m_board.IsRepeatPosition())
 		m_transpositionTable.Clear();
 
-	scorePv = RootNegamax(depth, -MAX_SCORE, MAX_SCORE, movePv, movePv);
+	int8_t depth = 1;
+	Move bestMove;
+	int16_t bestScore = RootNegamax(depth, -MAX_SCORE, MAX_SCORE, GARBAGE_MOVE, bestMove);
 	++depth;
 
 	while (depth <= maxDepth) {
@@ -133,44 +134,44 @@ Move Player::IterativeDeepening(int8_t maxDepth) {
 		// Restrict root negamax search window to allow more cutoffs. If
 		// The score we get back is outside the window it is not reliable, so re-search
 		// with a wider window. Causes some re-searches but on average reduces work as
-		// usually the eval doesn't change much between depths, especially as the higher,
+		// usually the eval doesn't change much between depths, especially at the higher,
 		// more expensive depths so worth it on average.
 
 		int16_t delta = ASPIRATION_WINDOW_DELTA;
-		int16_t alpha = scorePv - delta;
-		int16_t beta = scorePv + delta;
-		int16_t currScore;
+		int16_t alpha = bestScore - delta;
+		int16_t beta = bestScore + delta;
+		int16_t score;
 		Move bestMove;
 
 		while (true) {
-			currScore = RootNegamax(depth, alpha, beta, movePv, bestMove);
+			score = RootNegamax(depth, alpha, beta, bestMove, bestMove);
 
 			if (m_isStopped)
 				break;
 
-			// if (currScore < -MATE_THRESHOLD) {
+			// if (score < -MATE_THRESHOLD) {
 			// 	alpha = -MAX_SCORE;
-			// } else if (currScore > MATE_THRESHOLD) {
+			// } else if (score > MATE_THRESHOLD) {
 			// 	beta = MAX_SCORE;
-			// } else if (currScore <= alpha) {
+			// } else if (score <= alpha) {
 			// 	alpha -= delta;
 			// 	delta *= 2;
-			// } else if (currScore >= beta) {
+			// } else if (score >= beta) {
 			// 	beta += delta;
 			// 	delta *= 2;
 			// } else {
 			// 	break;
 			// }
 
-			if (currScore <= alpha) {
-				if (currScore < -MATE_THRESHOLD) {
+			if (score <= alpha) {
+				if (score < -MATE_THRESHOLD) {
 					alpha = -MAX_SCORE;
 				} else {
 					alpha -= delta;
 					delta *= 2;
 				}
-			} else if (currScore >= beta) {
-				if (currScore > MATE_THRESHOLD) {
+			} else if (score >= beta) {
+				if (score > MATE_THRESHOLD) {
 					beta = MAX_SCORE;
 				} else {
 					beta += delta;
@@ -184,10 +185,10 @@ Move Player::IterativeDeepening(int8_t maxDepth) {
 		if (m_isStopped)
 			break;
 
-		movePv = bestMove;
-		scorePv = currScore;
+		bestMove = bestMove;
+		bestScore = score;
 
-		if (scorePv > MATE_THRESHOLD || scorePv < -MATE_THRESHOLD)
+		if ((bestScore > MATE_THRESHOLD) || (bestScore < -MATE_THRESHOLD))
 			break;
 		
 		++depth;
@@ -197,24 +198,19 @@ Move Player::IterativeDeepening(int8_t maxDepth) {
 		std::cerr << "Log: Current depth quiescence nodes searched: " << m_quiescenceNodesSearched << '\n';
 		std::cerr << "Log: Transpositions hit: " << m_transpositionsHit << '\n';
 		float ebf = pow(m_currentDepthNodes, (1.0f / depth));
-		std::cerr << "Log: EBF: " << ebf << "\n\n"; 
+		std::cerr << "Log: EBF: " << ebf << "\n";
+		std::cerr << m_principleVariation;
 #endif
 	}
 
-#if DEBUG
-	std::cerr << "PV: " << movePv.ToString() << " ";
-	Undo undo = m_board.MakeMove(movePv);
-	PrintPv(depth - 2);
-	m_board.UndoMove(movePv, undo);
-#endif
-
-	return movePv;
+	return bestMove;
 }
 
-int16_t Player::RootNegamax(int8_t depth, int16_t alpha, int16_t beta, const Move& movePv, Move& bestMove) {
+int16_t Player::RootNegamax(int8_t depth, int16_t alpha, int16_t beta, const Move& prevBestMove, Move& bestMove) {
 #if DEBUG
 	++m_currentDepthNodes;
 	m_transpositionsHit = 0;
+	m_principleVariation.Reset();
 	std::cerr << "Log: Called root Negamax with depth " << (int) depth << '\n';
 #endif
 
@@ -230,11 +226,13 @@ int16_t Player::RootNegamax(int8_t depth, int16_t alpha, int16_t beta, const Mov
 	if (moves.size() == 0)
 		return check ? (-MATE_SCORE + m_board.GetMoveCount()) : DRAW_SCORE;
 
+	int8_t ply = 0;
+
 	std::array<int, MoveList::MAX_POSSIBLE_MOVES> staticScores;
 	for (int i = 0; i < moves.size(); ++i) {
-		if (moves[i] == movePv)
+		if (moves[i] == prevBestMove) {
 			staticScores[i] = PV_MOVE_BASE_SCORE;
-		else if (!moves[i].m_isCapture && moves[i] == m_killers.GetFirst(depth))
+		} else if (!moves[i].m_isCapture && moves[i] == m_killers.GetFirst(depth))
 			staticScores[i] = FIRST_KILLER_BASE_SCORE;
 		else if (!moves[i].m_isCapture && moves[i] == m_killers.GetSecond(depth))
 			staticScores[i] = SECOND_KILLER_BASE_SCORE;
@@ -242,7 +240,6 @@ int16_t Player::RootNegamax(int8_t depth, int16_t alpha, int16_t beta, const Mov
 			staticScores[i] = moves[i].m_score;
 	}
 
-	int8_t ply = 0;
 	int16_t bestScore = -MAX_SCORE;
 
 	for (int i = 0; i < moves.size(); ++i) {
@@ -259,7 +256,7 @@ int16_t Player::RootNegamax(int8_t depth, int16_t alpha, int16_t beta, const Mov
 		const Move& move = moves[i];
 
 		Undo undo = m_board.MakeMove(move);
-		int16_t score = -Negamax(depth - 1, ++ply, -beta, -alpha);
+		int16_t score = -Negamax(depth-1, ply+1, -beta, -alpha);
 		m_board.UndoMove(move, undo);
 
 		if (m_isStopped)
@@ -268,11 +265,15 @@ int16_t Player::RootNegamax(int8_t depth, int16_t alpha, int16_t beta, const Mov
 		if (score > bestScore) {
 			bestScore = score;
 			bestMove = move;
-			if (score > beta) {
+
+			if (score > beta)
 				return bestScore;
-			}
+
 			if (score > alpha) {
 				alpha = score;
+#if DEBUG
+				m_principleVariation.Set(ply, bestMove);
+#endif
 			}
 		}
 	}
@@ -287,6 +288,7 @@ int16_t Player::Negamax(int8_t depth, int8_t ply, int16_t alpha, int16_t beta, b
 	++m_nodesSearched;
 #if DEBUG
 	++m_currentDepthNodes;
+	m_principleVariation.Reset(ply);
 #endif
 
 	if (m_isStopped)
@@ -310,8 +312,9 @@ int16_t Player::Negamax(int8_t depth, int8_t ply, int16_t alpha, int16_t beta, b
 #endif
 		switch (pEntry->m_evaluationType) {
 			case EvaluationType::EXACT: {
-				// When using a TT mate score, penalise it by however far away from the position is from root
-				// because if the current position is mate in N and it has taken M plies to get here, it's a mate in N+M.
+#if DEBUG
+				m_principleVariation.Set(ply, pEntry->m_move);
+#endif
 				if (pEntry->m_score > MATE_THRESHOLD)
 					return pEntry->m_score - ply;
 				if (pEntry->m_score < -MATE_THRESHOLD)
@@ -321,7 +324,9 @@ int16_t Player::Negamax(int8_t depth, int8_t ply, int16_t alpha, int16_t beta, b
 			case EvaluationType::LOWER_BOUND: {
 				if (pEntry->m_score >= beta)
 					return pEntry->m_score;
-				alpha = std::max(alpha, pEntry->m_score);
+				if (pEntry->m_score > alpha) {
+					alpha = pEntry->m_score;
+				}
 				break;
 			}
 			case EvaluationType::UPPER_BOUND: {
@@ -337,7 +342,7 @@ int16_t Player::Negamax(int8_t depth, int8_t ply, int16_t alpha, int16_t beta, b
 
 	if (!m_moveGenerator.IsZugzwangLikely(context) && (depth > (NULL_MOVE_PRUNING_REDUCTION + 1)) && !nmp) {
 		Undo undo = m_board.MakeNullMove();
-		int16_t score = -Negamax(depth - NULL_MOVE_PRUNING_REDUCTION, ++ply, -beta, -(beta - 1), true);
+		int16_t score = -Negamax(depth - NULL_MOVE_PRUNING_REDUCTION, ply+1, -beta, -(beta - 1), true);
 		m_board.UndoNullMove(undo);
 
 		if (score >= beta) {
@@ -353,15 +358,15 @@ int16_t Player::Negamax(int8_t depth, int8_t ply, int16_t alpha, int16_t beta, b
 		return check ? (-MATE_SCORE + ply) : DRAW_SCORE;
 
 	if (depth == 0)
-		return Quiescence(++ply, alpha, beta);
+		return Quiescence(ply+1, alpha, beta);
 
 	std::array<int, MoveList::MAX_POSSIBLE_MOVES> staticScores;
 	for (int i = 0; i < moves.size(); ++i) {
 		if (isTransposition && (moves[i] == pEntry->m_move))
 			staticScores[i] = TT_MOVE_BASE_SCORE;
-		else if (!moves[i].m_isCapture && moves[i] == m_killers.GetFirst(depth))
+		else if (!moves[i].m_isCapture && (moves[i] == m_killers.GetFirst(depth)))
 			staticScores[i] = FIRST_KILLER_BASE_SCORE;
-		else if (!moves[i].m_isCapture && moves[i] == m_killers.GetSecond(depth))
+		else if (!moves[i].m_isCapture && (moves[i] == m_killers.GetSecond(depth)))
 			staticScores[i] = SECOND_KILLER_BASE_SCORE;
 		else
 			staticScores[i] = moves[i].m_score;
@@ -404,7 +409,7 @@ int16_t Player::Negamax(int8_t depth, int8_t ply, int16_t alpha, int16_t beta, b
 		// 	}
 		// }
 
-		int16_t score = -Negamax(depth - 1, ++ply, -beta, -alpha);
+		int16_t score = -Negamax(depth - 1, ply+1, -beta, -alpha);
 
 		m_board.UndoMove(move, undo);
 
@@ -414,6 +419,9 @@ int16_t Player::Negamax(int8_t depth, int8_t ply, int16_t alpha, int16_t beta, b
 			if (bestScore > alpha) {
 				alpha = bestScore;
 				evaluationType = EvaluationType::EXACT;
+#if DEBUG
+				m_principleVariation.Set(ply, bestMove);
+#endif
 			}
 
 		}
@@ -421,9 +429,8 @@ int16_t Player::Negamax(int8_t depth, int8_t ply, int16_t alpha, int16_t beta, b
 		if (bestScore >= beta) {
 			evaluationType = EvaluationType::LOWER_BOUND;
 
-			if (!move.m_isCapture) {
+			if (!move.m_isCapture)
 				m_killers.Set(depth, move);
-			}
 
 			break;
 		}
@@ -643,23 +650,14 @@ int Player::Perft(int8_t depth) {
 	return total;
 }
 
+#if DEBUG
 void Player::PrintPv(int8_t depth) {
-	if (depth == 0) {
-		std::cerr << '\n';
-		return;
+	std::cerr << "PV: ";
+
+	for (int i=0; i < m_principleVariation.GetLength(); ++i) {
+		std::cerr << m_principleVariation.Get(i).ToString() << ", ";
 	}
 
-	Hash hash = m_board.GetHash();
-	const TranspositionTableEntry* pEntry = m_transpositionTable.GetEntry(hash);
-
-	if (pEntry == nullptr || pEntry->m_depth < 1) {
-		std::cerr << "Log: PV ran out of moves...\n";
-		return;
-	}
-
-	std::cerr << pEntry->m_move.ToString() << " ";
-
-	Undo undo = m_board.MakeMove(pEntry->m_move);
-	PrintPv(depth - 1);
-	m_board.UndoMove(pEntry->m_move, undo);
+	std::cerr << "\n\n";
 }
+#endif
