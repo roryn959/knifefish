@@ -120,32 +120,53 @@ Move Player::IterativeDeepening(int8_t maxDepth) {
 	if (m_board.IsRepeatPosition())
 		m_transpositionTable.Clear();
 
+	scorePv = RootNegamax(depth, -MAX_SCORE, MAX_SCORE, movePv, movePv);
+	++depth;
+
 	while (depth <= maxDepth) {
-	
 #if DEBUG
 		m_currentDepthNodes = 0;
 		m_quiescenceNodesSearched = 0;
 #endif
 
-		Move bestMove;
-		scorePv = RootNegamax(depth, movePv, bestMove);
+		// Aspiration window:
+		// Restrict root negamax search window to allow more cutoffs. If
+		// The score we get back is outside the window it is not reliable, so re-search
+		// with a wider window. Causes some re-searches but on average reduces work as
+		// usually the eval doesn't change much between depths, especially as the higher,
+		// more expensive depths so worth it on average.
 
-		if (m_isStopped) {
-#if DEBUG
-			std::cerr << "Log: Stopping search.\n\n";
-#endif
-			break;
+		int16_t delta = ASPIRATION_WINDOW_DELTA;
+		int16_t alpha = scorePv - delta;
+		int16_t beta = scorePv + delta;
+		Move bestMove;
+
+		while (true) {
+			std::cerr << "alpha: " << alpha << ", beta: " << beta << '\n';
+			int16_t currScore = RootNegamax(depth, alpha, beta, movePv, bestMove);
+
+			if (m_isStopped)
+				break;
+
+			if (currScore <= alpha) {
+				alpha -= delta;
+				delta *= 2;
+			} else if (currScore >= beta) {
+				beta += delta;
+				delta *= 2;
+			} else {
+				break;
+			}
 		}
+
+		if (m_isStopped)
+			break;
 
 		movePv = bestMove;
 
-		if (scorePv > MATE_THRESHOLD) {
-#if DEBUG
-			std::cerr << "Log: Mate found! Stopping search.\n\n";
-#endif
+		if (scorePv > MATE_THRESHOLD)
 			break;
-		}
-
+		
 		++depth;
 
 #if DEBUG
@@ -167,7 +188,7 @@ Move Player::IterativeDeepening(int8_t maxDepth) {
 	return movePv;
 }
 
-int16_t Player::RootNegamax(int8_t depth, const Move& movePv, Move& bestMove) {
+int16_t Player::RootNegamax(int8_t depth, int16_t alpha, int16_t beta, const Move& movePv, Move& bestMove) {
 #if DEBUG
 	++m_currentDepthNodes;
 	m_transpositionsHit = 0;
@@ -200,8 +221,6 @@ int16_t Player::RootNegamax(int8_t depth, const Move& movePv, Move& bestMove) {
 
 	int8_t ply = 0;
 	int16_t bestScore = -MAX_SCORE;
-	int16_t alpha = -MAX_SCORE;
-	int16_t beta = MAX_SCORE;
 
 	for (int i = 0; i < moves.size(); ++i) {
 
@@ -226,6 +245,9 @@ int16_t Player::RootNegamax(int8_t depth, const Move& movePv, Move& bestMove) {
 		if (score > bestScore) {
 			bestScore = score;
 			bestMove = move;
+			if (score > beta) {
+				return bestScore;
+			}
 			if (score > alpha) {
 				alpha = score;
 			}

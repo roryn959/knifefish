@@ -30,6 +30,7 @@ constexpr int SecsToMillisecs(double secs) { return round(secs * 1000.0); }
 #define MAX_DEPTH 30
 #define DELTA_PRUNE_MARGIN 200
 #define NULL_MOVE_PRUNING_REDUCTION 4
+#define ASPIRATION_WINDOW_DELTA 25
 
 constexpr int16_t NO_SCORE { 0 };
 constexpr int16_t DRAW_SCORE { 0 };
@@ -286,7 +287,7 @@ private:
 
 	Move IterativeDeepening(int8_t maxDepth);
 
-	int16_t RootNegamax(int8_t depth, const Move& movePv, Move& bestMove);
+	int16_t RootNegamax(int8_t depth, int16_t alpha, int16_t beta, const Move& movePv, Move& bestMove);
 	int16_t Negamax(int8_t depth, int8_t ply, int16_t alpha, int16_t beta, bool nmp = false);
 
 	int16_t Quiescence(int8_t ply, int16_t alpha, int16_t beta);
