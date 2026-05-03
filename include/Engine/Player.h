@@ -27,7 +27,7 @@ constexpr int SecsToMillisecs(double secs) { return round(secs * 1000.0); }
 
 #define TIME_CHECK_FREQUENCY 2048
 
-#define MAX_DEPTH 20
+#define MAX_DEPTH 30
 #define DELTA_PRUNE_MARGIN 200
 #define NULL_MOVE_PRUNING_REDUCTION 4
 

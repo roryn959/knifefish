@@ -347,16 +347,17 @@ int16_t Player::Negamax(int8_t depth, int8_t ply, int16_t alpha, int16_t beta, b
 		// 	&& (staticScores[i] != TT_MOVE_BASE_SCORE) && (staticScores[i] != FIRST_KILLER_BASE_SCORE)
 		// 	&& (staticScores[i] != SECOND_KILLER_BASE_SCORE) && (depth > 3) && (i > 2);
 
-		bool shouldLmr = (depth > 3) && (i > 2);
+		// bool shouldLmr = !check && !move.m_isCapture && (move.m_promotionPiece != Piece::EMPTY)
+		// 	&& (depth > 3) && (i > 3);
 
-		if (shouldLmr) {
-			int8_t lmrReduction = (i < 6) ? 1 : (depth / 3);
-			int16_t lmrScore = -Negamax(depth - 1 - lmrReduction, ++ply, -beta, -alpha);
-			if (lmrScore < beta) {
-				m_board.UndoMove(move, undo);
-				continue;
-			}
-		}
+		// if (shouldLmr) {
+		// 	int8_t lmrReduction = (i < 6) ? 1 : (depth / 3);
+		// 	int16_t lmrScore = -Negamax(depth - 1 - lmrReduction, ++ply, -beta, -alpha);
+		// 	if (lmrScore < beta) {
+		// 		m_board.UndoMove(move, undo);
+		// 		continue;
+		// 	}
+		// }
 
 		int16_t score = -Negamax(depth - 1, ++ply, -beta, -alpha);
 
