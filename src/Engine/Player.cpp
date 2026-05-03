@@ -139,16 +139,20 @@ Move Player::IterativeDeepening(int8_t maxDepth) {
 		int16_t delta = ASPIRATION_WINDOW_DELTA;
 		int16_t alpha = scorePv - delta;
 		int16_t beta = scorePv + delta;
+		int16_t currScore;
 		Move bestMove;
 
 		while (true) {
-			std::cerr << "alpha: " << alpha << ", beta: " << beta << '\n';
-			int16_t currScore = RootNegamax(depth, alpha, beta, movePv, bestMove);
+			currScore = RootNegamax(depth, alpha, beta, movePv, bestMove);
 
 			if (m_isStopped)
 				break;
 
-			if (currScore <= alpha) {
+			if (currScore < -MATE_THRESHOLD) {
+				alpha = -MAX_SCORE;
+			} else if (currScore > MATE_THRESHOLD) {
+				beta = MAX_SCORE;
+			} else if (currScore <= alpha) {
 				alpha -= delta;
 				delta *= 2;
 			} else if (currScore >= beta) {
@@ -163,8 +167,9 @@ Move Player::IterativeDeepening(int8_t maxDepth) {
 			break;
 
 		movePv = bestMove;
+		scorePv = currScore;
 
-		if (scorePv > MATE_THRESHOLD)
+		if (scorePv > MATE_THRESHOLD || scorePv < -MATE_THRESHOLD)
 			break;
 		
 		++depth;
