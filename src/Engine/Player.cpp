@@ -148,16 +148,34 @@ Move Player::IterativeDeepening(int8_t maxDepth) {
 			if (m_isStopped)
 				break;
 
-			if (currScore < -MATE_THRESHOLD) {
-				alpha = -MAX_SCORE;
-			} else if (currScore > MATE_THRESHOLD) {
-				beta = MAX_SCORE;
-			} else if (currScore <= alpha) {
-				alpha -= delta;
-				delta *= 2;
+			// if (currScore < -MATE_THRESHOLD) {
+			// 	alpha = -MAX_SCORE;
+			// } else if (currScore > MATE_THRESHOLD) {
+			// 	beta = MAX_SCORE;
+			// } else if (currScore <= alpha) {
+			// 	alpha -= delta;
+			// 	delta *= 2;
+			// } else if (currScore >= beta) {
+			// 	beta += delta;
+			// 	delta *= 2;
+			// } else {
+			// 	break;
+			// }
+
+			if (currScore <= alpha) {
+				if (currScore < -MATE_THRESHOLD) {
+					alpha = -MAX_SCORE;
+				} else {
+					alpha -= delta;
+					delta *= 2;
+				}
 			} else if (currScore >= beta) {
-				beta += delta;
-				delta *= 2;
+				if (currScore > MATE_THRESHOLD) {
+					beta = MAX_SCORE;
+				} else {
+					beta += delta;
+					delta *= 2;
+				}
 			} else {
 				break;
 			}
