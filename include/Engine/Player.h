@@ -11,6 +11,7 @@
 #include "Engine/MagicBitboardHelper.h"
 #include "Engine/Move.h"
 #include "Engine/MoveGenerator.h"
+#include "Engine/MoveHistory.h"
 #include "Engine/PrincipleVariation.h"
 #include "Engine/TranspositionTable.h"
 #include "Engine/Undo.h"
@@ -48,6 +49,7 @@ private:
 	MoveGenerator 			m_moveGenerator;
 	TranspositionTable 		m_transpositionTable;
 	Killers					m_killers;
+	MoveHistory				m_moveHistory;
 #if DEBUG
 	PrincipleVariation		m_principleVariation;
 #endif

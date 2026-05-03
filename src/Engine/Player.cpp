@@ -120,8 +120,8 @@ Move Player::IterativeDeepening(int8_t maxDepth) {
 		m_transpositionTable.Clear();
 
 	int8_t depth = 1;
-	Move bestMove;
-	int16_t bestScore = RootNegamax(depth, -MAX_SCORE, MAX_SCORE, GARBAGE_MOVE, bestMove);
+	Move pvMove;
+	int16_t bestScore = RootNegamax(depth, -MAX_SCORE, MAX_SCORE, GARBAGE_MOVE, pvMove);
 	++depth;
 
 	while (depth <= maxDepth) {
@@ -144,7 +144,7 @@ Move Player::IterativeDeepening(int8_t maxDepth) {
 		Move bestMove;
 
 		while (true) {
-			score = RootNegamax(depth, alpha, beta, bestMove, bestMove);
+			score = RootNegamax(depth, alpha, beta, pvMove, bestMove);
 
 			if (m_isStopped)
 				break;
@@ -185,7 +185,7 @@ Move Player::IterativeDeepening(int8_t maxDepth) {
 		if (m_isStopped)
 			break;
 
-		bestMove = bestMove;
+		pvMove = bestMove;
 		bestScore = score;
 
 		if ((bestScore > MATE_THRESHOLD) || (bestScore < -MATE_THRESHOLD))
@@ -203,7 +203,7 @@ Move Player::IterativeDeepening(int8_t maxDepth) {
 #endif
 	}
 
-	return bestMove;
+	return pvMove;
 }
 
 int16_t Player::RootNegamax(int8_t depth, int16_t alpha, int16_t beta, const Move& prevBestMove, Move& bestMove) {
@@ -230,14 +230,17 @@ int16_t Player::RootNegamax(int8_t depth, int16_t alpha, int16_t beta, const Mov
 
 	std::array<int, MoveList::MAX_POSSIBLE_MOVES> staticScores;
 	for (int i = 0; i < moves.size(); ++i) {
-		if (moves[i] == prevBestMove) {
+		const Move& move = moves[i];
+		if (move == prevBestMove) {
 			staticScores[i] = PV_MOVE_BASE_SCORE;
-		} else if (!moves[i].m_isCapture && moves[i] == m_killers.GetFirst(depth))
+		} else if (!move.m_isCapture && move == m_killers.GetFirst(depth))
 			staticScores[i] = FIRST_KILLER_BASE_SCORE;
-		else if (!moves[i].m_isCapture && moves[i] == m_killers.GetSecond(depth))
+		else if (!move.m_isCapture && move == m_killers.GetSecond(depth))
 			staticScores[i] = SECOND_KILLER_BASE_SCORE;
+		else if (move.m_isCapture)
+			staticScores[i] = move.m_score;
 		else
-			staticScores[i] = moves[i].m_score;
+			staticScores[i] = m_moveHistory.Get(m_board.IsWhiteTurn(), move);
 	}
 
 	int16_t bestScore = -MAX_SCORE;
@@ -266,8 +269,21 @@ int16_t Player::RootNegamax(int8_t depth, int16_t alpha, int16_t beta, const Mov
 			bestScore = score;
 			bestMove = move;
 
-			if (score > beta)
+			if (score > beta) {
+				if (!move.m_isCapture) {
+					m_killers.Set(depth, move);
+
+					m_moveHistory.Adjust(m_board.IsWhiteTurn(), move, depth*depth);
+
+					// Penalise quiet moves tried before this
+					for (int j=0; j<i; ++j) {
+						if (!moves[j].m_isCapture)
+							m_moveHistory.Adjust(m_board.IsWhiteTurn(), moves[j], -depth*depth);
+					}
+				}
+
 				return bestScore;
+			}
 
 			if (score > alpha) {
 				alpha = score;
@@ -362,18 +378,21 @@ int16_t Player::Negamax(int8_t depth, int8_t ply, int16_t alpha, int16_t beta, b
 
 	std::array<int, MoveList::MAX_POSSIBLE_MOVES> staticScores;
 	for (int i = 0; i < moves.size(); ++i) {
-		if (isTransposition && (moves[i] == pEntry->m_move))
+		const Move& move = moves[i];
+		if (isTransposition && (move == pEntry->m_move))
 			staticScores[i] = TT_MOVE_BASE_SCORE;
-		else if (!moves[i].m_isCapture && (moves[i] == m_killers.GetFirst(depth)))
+		else if (!move.m_isCapture && (move == m_killers.GetFirst(depth)))
 			staticScores[i] = FIRST_KILLER_BASE_SCORE;
-		else if (!moves[i].m_isCapture && (moves[i] == m_killers.GetSecond(depth)))
+		else if (!move.m_isCapture && (move == m_killers.GetSecond(depth)))
 			staticScores[i] = SECOND_KILLER_BASE_SCORE;
+		else if (move.m_isCapture)
+			staticScores[i] = move.m_score;
 		else
-			staticScores[i] = moves[i].m_score;
+			staticScores[i] = m_moveHistory.Get(m_board.IsWhiteTurn(), move);
 	}
 
 	int16_t bestScore = -MAX_SCORE;
-	Move bestMove{ QUIET_MOVE_BASE_SCORE, Square::NONE, Square::NONE };
+	Move bestMove{ GARBAGE_MOVE };
 	EvaluationType evaluationType = EvaluationType::UPPER_BOUND;
 
 	for (int i = 0; i < moves.size(); ++i) {
@@ -416,23 +435,32 @@ int16_t Player::Negamax(int8_t depth, int8_t ply, int16_t alpha, int16_t beta, b
 		if (score > bestScore) {
 			bestScore = score;
 			bestMove = move;
+#if DEBUG
+			if (bestScore > alpha)
+				m_principleVariation.Set(ply, bestMove);
+#endif
+			if (bestScore >= beta) {
+				evaluationType = EvaluationType::LOWER_BOUND;
+
+				if (!move.m_isCapture) {
+					m_killers.Set(depth, move);
+
+					m_moveHistory.Adjust(m_board.IsWhiteTurn(), move, depth*depth);
+
+					// Penalise quiet moves tried before this
+					for (int j=0; j<i; ++j) {
+						if (!moves[j].m_isCapture)
+							m_moveHistory.Adjust(m_board.IsWhiteTurn(), moves[j], -depth*depth);
+					}
+				}
+
+				break;
+			}
+
 			if (bestScore > alpha) {
 				alpha = bestScore;
 				evaluationType = EvaluationType::EXACT;
-#if DEBUG
-				m_principleVariation.Set(ply, bestMove);
-#endif
 			}
-
-		}
-
-		if (bestScore >= beta) {
-			evaluationType = EvaluationType::LOWER_BOUND;
-
-			if (!move.m_isCapture)
-				m_killers.Set(depth, move);
-
-			break;
 		}
 	}
 

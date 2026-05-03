@@ -38,7 +38,7 @@ constexpr std::array<int, 64> FlippedPst(const std::array<int, static_cast<size_
 
 	for (int i = 0; i < static_cast<size_t>(Square::COUNT); ++i)
 		flipped[i] = -pst[i ^ 56];
-	
+
 	return flipped;
 }
 
@@ -47,7 +47,7 @@ constexpr std::array<int, 64> FlippedPstNonNegative(const std::array<int, static
 
 	for (int i = 0; i < static_cast<size_t>(Square::COUNT); ++i)
 		flipped[i] = pst[i ^ 56];
-	
+
 	return flipped;
 }
 
