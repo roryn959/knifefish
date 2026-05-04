@@ -149,20 +149,6 @@ Move Player::IterativeDeepening(int8_t maxDepth) {
 			if (m_isStopped)
 				break;
 
-			// if (score < -MATE_THRESHOLD) {
-			// 	alpha = -MAX_SCORE;
-			// } else if (score > MATE_THRESHOLD) {
-			// 	beta = MAX_SCORE;
-			// } else if (score <= alpha) {
-			// 	alpha -= delta;
-			// 	delta *= 2;
-			// } else if (score >= beta) {
-			// 	beta += delta;
-			// 	delta *= 2;
-			// } else {
-			// 	break;
-			// }
-
 			if (score <= alpha) {
 				if (score < -MATE_THRESHOLD) {
 					alpha = -MAX_SCORE;
@@ -257,9 +243,17 @@ int16_t Player::RootNegamax(int8_t depth, int16_t alpha, int16_t beta, const Mov
 		std::swap(staticScores[i], staticScores[best]);
 
 		const Move& move = moves[i];
-
 		Undo undo = m_board.MakeMove(move);
-		int16_t score = -Negamax(depth-1, ply+1, -beta, -alpha);
+
+		int16_t score;
+		if (i == 0) {
+			score = -Negamax(depth-1, ply+1, -beta, -alpha);
+		} else {
+			score = -Negamax(depth-1, ply+1, -(alpha+1), -alpha);
+			if (score > alpha && score < beta)
+				score = -Negamax(depth-1, ply+1, -beta, -alpha);
+		}
+
 		m_board.UndoMove(move, undo);
 
 		if (m_isStopped)
@@ -269,27 +263,26 @@ int16_t Player::RootNegamax(int8_t depth, int16_t alpha, int16_t beta, const Mov
 			bestScore = score;
 			bestMove = move;
 
-			if (score > beta) {
-				if (!move.m_isCapture) {
-					m_killers.Set(depth, move);
-
-					m_moveHistory.Adjust(m_board.IsWhiteTurn(), move, depth*depth);
-
-					// Penalise quiet moves tried before this
-					for (int j=0; j<i; ++j) {
-						if (!moves[j].m_isCapture)
-							m_moveHistory.Adjust(m_board.IsWhiteTurn(), moves[j], -depth*depth);
-					}
-				}
-
-				return bestScore;
-			}
-
 			if (score > alpha) {
 				alpha = score;
 #if DEBUG
 				m_principleVariation.Set(ply, bestMove);
 #endif
+				if (score > beta) {
+					if (!move.m_isCapture) {
+						m_killers.Set(depth, move);
+
+						m_moveHistory.Adjust(m_board.IsWhiteTurn(), move, depth*depth);
+
+						// Penalise quiet moves tried before this
+						for (int j=0; j<i; ++j) {
+							if (!moves[j].m_isCapture)
+								m_moveHistory.Adjust(m_board.IsWhiteTurn(), moves[j], -depth*depth);
+						}
+					}
+
+					return bestScore;
+				}
 			}
 		}
 	}
@@ -407,7 +400,6 @@ int16_t Player::Negamax(int8_t depth, int8_t ply, int16_t alpha, int16_t beta, b
 		std::swap(staticScores[i], staticScores[best]);
 
 		const Move& move = moves[i];
-
 		Undo undo = m_board.MakeMove(move);
 
 		// LMR
@@ -428,38 +420,44 @@ int16_t Player::Negamax(int8_t depth, int8_t ply, int16_t alpha, int16_t beta, b
 		// 	}
 		// }
 
-		int16_t score = -Negamax(depth - 1, ply+1, -beta, -alpha);
+		int16_t score;
+		if (i == 0 || depth <= 4) {
+			score = -Negamax(depth-1, ply+1, -beta, -alpha);
+		} else {
+			score = -Negamax(depth-1, ply+1, -(alpha+1), -alpha);
+			if (score > alpha && score < beta)
+				score = -Negamax(depth-1, ply+1, -beta, -alpha);
+		}
 
 		m_board.UndoMove(move, undo);
 
 		if (score > bestScore) {
 			bestScore = score;
 			bestMove = move;
-#if DEBUG
-			if (bestScore > alpha)
-				m_principleVariation.Set(ply, bestMove);
-#endif
-			if (bestScore >= beta) {
-				evaluationType = EvaluationType::LOWER_BOUND;
-
-				if (!move.m_isCapture) {
-					m_killers.Set(depth, move);
-
-					m_moveHistory.Adjust(m_board.IsWhiteTurn(), move, depth*depth);
-
-					// Penalise quiet moves tried before this
-					for (int j=0; j<i; ++j) {
-						if (!moves[j].m_isCapture)
-							m_moveHistory.Adjust(m_board.IsWhiteTurn(), moves[j], -depth*depth);
-					}
-				}
-
-				break;
-			}
-
 			if (bestScore > alpha) {
 				alpha = bestScore;
 				evaluationType = EvaluationType::EXACT;
+#if DEBUG
+				m_principleVariation.Set(ply, bestMove);
+#endif
+
+				if (bestScore >= beta) {
+					evaluationType = EvaluationType::LOWER_BOUND;
+
+					if (!move.m_isCapture) {
+						m_killers.Set(depth, move);
+
+						m_moveHistory.Adjust(m_board.IsWhiteTurn(), move, depth*depth);
+
+						// Penalise quiet moves tried before this
+						for (int j=0; j<i; ++j) {
+							if (!moves[j].m_isCapture)
+								m_moveHistory.Adjust(m_board.IsWhiteTurn(), moves[j], -depth*depth);
+						}
+					}
+
+					break;
+				}
 			}
 		}
 	}
