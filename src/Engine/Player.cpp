@@ -130,13 +130,6 @@ Move Player::IterativeDeepening(int8_t maxDepth) {
 		m_quiescenceNodesSearched = 0;
 #endif
 
-		// Aspiration window:
-		// Restrict root negamax search window to allow more cutoffs. If
-		// The score we get back is outside the window it is not reliable, so re-search
-		// with a wider window. Causes some re-searches but on average reduces work as
-		// usually the eval doesn't change much between depths, especially at the higher,
-		// more expensive depths so worth it on average.
-
 		int16_t delta = ASPIRATION_WINDOW_DELTA;
 		int16_t alpha = bestScore - delta;
 		int16_t beta = bestScore + delta;
@@ -399,33 +392,26 @@ int16_t Player::Negamax(int8_t depth, int8_t ply, int16_t alpha, int16_t beta, b
 		std::swap(moves[i], moves[best]);
 		std::swap(staticScores[i], staticScores[best]);
 
+		bool isFirstMove = (i == 0);
+
 		const Move& move = moves[i];
 		Undo undo = m_board.MakeMove(move);
 
 		// LMR
 
-		// bool shouldLmr = !check && !move.m_isCapture && (move.m_promotionPiece != Piece::EMPTY)
-		// 	&& (staticScores[i] != TT_MOVE_BASE_SCORE) && (staticScores[i] != FIRST_KILLER_BASE_SCORE)
-		// 	&& (staticScores[i] != SECOND_KILLER_BASE_SCORE) && (depth > 3) && (i > 2);
-
-		// bool shouldLmr = !check && !move.m_isCapture && (move.m_promotionPiece != Piece::EMPTY)
-		// 	&& (depth > 3) && (i > 3);
-
-		// if (shouldLmr) {
-		// 	int8_t lmrReduction = (i < 6) ? 1 : (depth / 3);
-		// 	int16_t lmrScore = -Negamax(depth - 1 - lmrReduction, ++ply, -beta, -alpha);
-		// 	if (lmrScore < beta) {
-		// 		m_board.UndoMove(move, undo);
-		// 		continue;
-		// 	}
-		// }
-
 		int16_t score;
-		if (i == 0 || depth <= 4) {
+		if (isFirstMove) {
 			score = -Negamax(depth-1, ply+1, -beta, -alpha);
 		} else {
-			score = -Negamax(depth-1, ply+1, -(alpha+1), -alpha);
-			if (score > alpha && score < beta)
+			bool shouldLmr = (depth > 4) && (i > 5);
+
+			int8_t lmrReduction = 0;
+			if (shouldLmr)
+				lmrReduction = 1;//(i < 6) ? 1 : (depth / 3);
+			
+			score = -Negamax(depth-lmrReduction-1, ply+1, -(alpha+1), -alpha);
+
+			if ((alpha < score) && (score < beta))
 				score = -Negamax(depth-1, ply+1, -beta, -alpha);
 		}
 
